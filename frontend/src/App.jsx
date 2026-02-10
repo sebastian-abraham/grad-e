@@ -1,5 +1,5 @@
 import React from "react";
-import Webcam from "react-webcam";
+// import Webcam from "react-webcam";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import Batches from "./pages/Batches";

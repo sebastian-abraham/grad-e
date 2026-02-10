@@ -1,7 +1,35 @@
-import React from "react";
+import React, { useState } from "react";
+import UploadModal from "../component/uploadmodal";
 
-export default function Home() {
-  return (
+
+  // State for modal visibility and upload loading
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // Handler for upload: send PDF to backend for Gemini API processing
+  const handleUpload = async (file) => {
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const response = await fetch("/", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+      // Optionally handle response from Gemini API
+      // const result = await response.json();
+      setShowUploadModal(false); // Close modal after success
+    } catch (err) {
+      alert("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+  export default function Home(){
+    return (
     // 1. Improved Base Layout: Soft background, centered content, proper dark mode handling
     <div className="min-h-screen w-full bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-slate-100 transition-colors duration-300">
       {/* 2. Constrained Wrapper: Prevents content from stretching too wide on 4k screens */}
@@ -201,7 +229,10 @@ export default function Home() {
                   </span>
                   <span className="text-sm font-bold">New Exam</span>
                 </button>
-                <button className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 active:scale-95 transition-all group">
+                <button
+                  className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 active:scale-95 transition-all group"
+                  onClick={() => setShowUploadModal(true)}
+                >
                   <span className="material-symbols-outlined text-3xl group-hover:-translate-y-1 transition-transform">
                     upload_file
                   </span>
@@ -254,7 +285,17 @@ export default function Home() {
           </aside>
         </div>
       </div>
-    </div>
+    {/* Upload Modal Integration */}
+    <UploadModal
+      open={showUploadModal}
+      onClose={() => {
+        setShowUploadModal(false);
+        setUploading(false);
+      }}
+      onUpload={handleUpload}
+      uploading={uploading}
+    />
+      </div>
   );
 }
 
