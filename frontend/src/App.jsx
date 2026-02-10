@@ -1,10 +1,17 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Link,
+  useLocation,
+} from "react-router-dom";
 import Home from "./pages/Home";
 import Batches from "./pages/Batches";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import GradeDetails from "./pages/GradeDetails";
 
 function FooterNav() {
   return (
@@ -47,16 +54,26 @@ function FooterNav() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white transition-colors duration-200">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/batches" element={<Batches />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <FooterNav />
-      </div>
+      <AppLayout />
     </BrowserRouter>
+  );
+}
+
+function AppLayout() {
+  const location = useLocation();
+  const isResultsPage = location.pathname === "/results";
+
+  return (
+    <div className="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white transition-colors duration-200">
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/batches" element={<Batches />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/results" element={<GradeDetails />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      {!isResultsPage && <FooterNav />}
+    </div>
   );
 }
