@@ -51,7 +51,7 @@ router.put("/:id", async (req, res) => {
     const updatedClass = await Class.findByIdAndUpdate(
       req.params.id,
       { name },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
     if (!updatedClass) return res.status(404).json({ error: "Class not found." });
     
@@ -85,7 +85,7 @@ router.post("/:id/students", async (req, res) => {
     const updatedClass = await Class.findByIdAndUpdate(
       req.params.id,
       { $addToSet: { students: { $each: idsToAdd } } },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate("students", "displayName email role");
     
     if (!updatedClass) return res.status(404).json({ error: "Class not found." });
@@ -102,7 +102,7 @@ router.delete("/:id/students/:studentId", async (req, res) => {
     const updatedClass = await Class.findByIdAndUpdate(
       req.params.id,
       { $pull: { students: req.params.studentId } },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate("students", "displayName email role");
 
     if (!updatedClass) return res.status(404).json({ error: "Class not found." });

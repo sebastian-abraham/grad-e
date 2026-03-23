@@ -89,7 +89,7 @@ router.put("/:id", async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { ...(role && { role }), ...(displayName && { displayName }) },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!user) {
