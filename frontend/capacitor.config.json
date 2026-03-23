@@ -1,0 +1,11 @@
+{
+  "appId": "com.grade.app",
+  "appName": "GRAD-E",
+  "webDir": "dist",
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "overlay": true
+    }
+  }
+}
