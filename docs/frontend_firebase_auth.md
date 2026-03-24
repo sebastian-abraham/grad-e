@@ -1,43 +1,49 @@
 # Frontend Firebase Authentication Integration
 
-## Overview
-The uncommitted changes introduce a complete frontend authentication flow integrating Firebase for Google Sign-In and a custom backend for user synchronization (MongoDB). This allows users to authenticate via Google, with the frontend application managing the authentication state globally.
+This document breaks down the frontend authentication flow, detailing how Firebase Google Sign-In is orchestrated, state is globally managed, and routing is protected based on roles retrieved from the backend.
 
-## File Structure & Changes
+## 1. Firebase Initialization (`src/config/firebase.js`)
+Configures the Firebase client application using structural environment variables.
+- Uses `initializeApp` passing `firebaseConfig`.
+- Exports `auth` using `getAuth(app)`.
+- Exports `googleProvider` using `new GoogleAuthProvider()`.
+- **Environment Context**: Values such as `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, etc. must be defined in `.env`.
 
-### New Files Created
-- **`frontend/src/config/firebase.js`**:
-  Initializes the Firebase application and exports the initialized `auth` instance along with the `GoogleAuthProvider`. Depends on VITE environment variables for the Firebase configuration keys.
-  
-- **`frontend/src/contexts/AuthContext.jsx`**:
-  Provides a global React context for authentication state.
-  - Manages `currentUser` and `loading` states.
-  - Implements `loginWithGoogle` which:
-    1. Triggers the Firebase Google popup sign-in.
-    2. Takes the Google user object and sends the `firebaseUid`, `email`, and `displayName` to the custom backend endpoint (`POST {VITE_API_URL}/api/users/login`).
-    3. Handles 403 authorization rejections gracefully by signing the user out of Firebase if they don't exist in our DB.
-  - Implements `logout` which signs the user out of Firebase.
-  
-- **`frontend/src/components/Login.jsx`**:
-  A styled login component containing a simple "Login with Google" button. It uses the `loginWithGoogle` method from `AuthContext` and manages local loading state/error messages if the sign-in fails.
+## 2. Global State Management (`src/contexts/AuthContext.jsx`)
+The `AuthProvider` wraps the entire application and maintains two primary React states:
+1. `currentUser`: Stores the combined user object from our MongoDB Backend (containing `role`, `email`, `displayName`, and Database `_id`).
+2. `loading`: A boolean preventing the UI from rendering prematurely before the authentication session is fully resolved or restored.
 
-### Existing Files Modified
-- **`frontend/package.json` & `frontend/package-lock.json`**:
-  Installed the `firebase` npm package (`^12.11.0`).
+### Session Restoration Hook (The `useEffect`)
+- Subscribes to Firebase's `onAuthStateChanged`.
+- If a Firebase session is actively detected on page load:
+  1. It seamlessly fires a background `POST` request to `VITE_API_URL/api/users/login` using the `user.uid` and `user.email`.
+  2. If the backend accepts the request (User exists in MongoDB), `setCurrentUser` is populated with the database object.
+  3. If rejected (e.g. 403 Forbidden because they were removed from the database), it aggressively calls `signOut(auth)` logging them out of Firebase to prevent ghost sessions.
+- Sets `loading(false)` once the roundtrip completes, allowing `<App />` to render.
 
-- **`frontend/src/main.jsx`**:
-  Wrapped the root `<App />` component in the newly created `<AuthProvider>` to ensure authentication context is available globally.
+### The `loginWithGoogle` Function
+- Invoked manually by user click in the `Login` screen.
+- **Step 1**: Tries `signInWithPopup(auth, googleProvider)`.
+- **Step 2**: If Firebase succeeds, takes the OAuth `user.uid`, `email`, and `displayName` and sends them as a `POST` payload to `/api/users/login`.
+- **Step 3**: Awaits the MongoDB sync response.
+  - If the backend returns `403` (email not whitelisted), it throws an Error and forces a Firebase `signOut(auth)`, ensuring unauthorized users never pass the Login wall.
+  - If successful, updates the `currentUser` context and completes.
 
-- **`frontend/src/App.jsx`**:
-  Updated to act as the primary protected dashboard. 
-  - Retrieves `currentUser` and `logout` from `AuthContext`.
-  - If no `currentUser` is present, it automatically renders the `<Login />` component.
-  - If authenticated, it renders a personalized welcome message along with the user's role from the backend and a logout button.
+## 3. UI and Protected Routing (`src/App.jsx`)
+`react-router-dom` is used to orchestrate access based precisely on the `currentUser` state.
 
-## How it works
-1. **Initial Load**: `<AuthProvider>` defaults `loading` to true and uses Firebase's `onAuthStateChanged` hook to listen to the user session.
-2. **Session Restoration**: On page reload, if a Firebase user is active, the frontend automatically pings the backend `POST /api/users/login` to restore the MongoDB user data into the `currentUser` state. If the user does not exist in the database, it signs them out of Firebase. Once resolved, `loading` is set to false.
-3. **Unauthenticated State**: `<App />` detects `currentUser` is null and defers rendering to the `<Login />` component.
-4. **Triggering Login**: The user clicks 'Login with Google'. Firebase authenticates the user.
-5. **Backend Sync**: The `AuthContext` automatically forwards the Google credentials to the backend. If the backend accepts the user, they are stored in state. If rejected (e.g., unauthorized role or unlisted email), they are immediately logged out of Firebase.
-6. **Authenticated State**: The `currentUser` populates the context, causing `<App />` to render the dashboard instead of the Login screen.
+### The Root Route (`/`)
+- Checks `!currentUser`. If true, forces the `<Login />` component.
+- If `currentUser` exists, it triggers `<Navigate>` automatically routing them based on their Mongo DB `role`:
+  - `admin` -> `/admin`
+  - *others* -> `/dashboard`
+
+### Role-Protected Container Routing
+- **Admin Endpoints (`/admin/*`)**: Conditionally rendered globally by checking `currentUser && currentUser.role === "admin"`. Wrapped securely inside `<AdminLayout />`.
+- **Teacher Endpoints (`/teacher/*`)**: Conditionally rendered globally by checking `currentUser && currentUser.role === "teacher"`. Wrapped strictly inside `<TeacherLayout />`.
+
+## 4. The Login Component (`src/components/Login.jsx`)
+- Simple functional component binding the UI to the `AuthContext`.
+- Manages an internal `loading` boolean exclusively for changing the login button visually to "Logging in..." to prevent spam clicks.
+- Renders textual `<p>` errors caught explicitly from the context's `try/catch` block (e.g. "Account not authorized").
