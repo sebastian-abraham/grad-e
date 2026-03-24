@@ -1,1 +1,23 @@
-.agents
+# Exclusions
+
+engine/storage/uploads/*
+!engine/storage/uploads/.gitkeep
+
+
+engine/storage/reports/*.json
+
+.env
+
+# Python Environment
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# IDE & OS Specific
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
