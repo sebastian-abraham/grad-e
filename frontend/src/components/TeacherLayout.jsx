@@ -86,17 +86,12 @@ export default function TeacherLayout() {
       <AnimatePresence>
         {menuOpen && (
           <motion.div
+            className="teacher-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={() => setMenuOpen(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(16, 25, 21, 0.42)",
-              zIndex: 2,
-            }}
           />
         )}
       </AnimatePresence>
