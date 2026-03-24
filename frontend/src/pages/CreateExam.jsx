@@ -189,7 +189,7 @@ export default function CreateExam() {
               <label style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
                 <Upload size={32} color="#94a3b8" />
                 <span style={{ fontWeight: "600", color: "#475569" }}>Select Question Paper (PDF)</span>
-                <input type="file" accept="application/pdf" onChange={e => setFiles({...files, questionPaper: e.target.files[0]})} style={{ display: "none" }} />
+                <input type="file" accept=".pdf,application/pdf" onChange={e => setFiles({...files, questionPaper: e.target.files[0]})} style={{ display: "none" }} />
                 {files.questionPaper && <span style={{ color: "#10b981", fontSize: "14px" }}>✓ {files.questionPaper.name}</span>}
               </label>
             </div>
@@ -198,7 +198,7 @@ export default function CreateExam() {
               <label style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
                 <Upload size={32} color="#94a3b8" />
                 <span style={{ fontWeight: "600", color: "#475569" }}>Select Answer Key (PDF)</span>
-                <input type="file" accept="application/pdf" onChange={e => setFiles({...files, answerKey: e.target.files[0]})} style={{ display: "none" }} />
+                <input type="file" accept=".pdf,application/pdf" onChange={e => setFiles({...files, answerKey: e.target.files[0]})} style={{ display: "none" }} />
                 {files.answerKey && <span style={{ color: "#10b981", fontSize: "14px" }}>✓ {files.answerKey.name}</span>}
               </label>
             </div>
