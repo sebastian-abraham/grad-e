@@ -1,0 +1,29 @@
+# --- Virtual Environments ---
+# This is the most important part! Never upload your venv.
+venv/
+.venv/
+env/
+ENV/
+
+# --- Python Internals ---
+# These are compiled files created by Python to run faster.
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Project Specifics ---
+# We don't want to save the raw scans or the final PDFs to Git.
+temp/
+*.pdf
+*.jpg
+*.png
+
+# --- Distribution / Packaging ---
+# If you ever package your app.
+dist/
+build/
+*.egg-info/
+
+# --- Operating System Files ---
+.DS_Store
+Thumbs.db
