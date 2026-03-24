@@ -1,7 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
 
 :root {
-  --app-bg: #1d1a1a;
+  --app-bg: #f6f4f2;
   --shell-bg: #f6f4f2;
   --panel-bg: #f4efed;
   --ink: #2e3338;
@@ -31,7 +31,7 @@ html,
 body,
 #root {
   width: 100%;
-  min-height: 100%;
+  min-height: 100dvh;
   margin: 0;
   font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
   color: var(--ink);
@@ -42,11 +42,11 @@ body,
 .teacher-shell {
   position: relative;
   display: flex;
-  width: min(1320px, calc(100vw - clamp(12px, 3vw, 32px)));
-  min-height: calc(100dvh - clamp(12px, 3vw, 32px));
-  margin: clamp(6px, 1.5vw, 16px) auto;
-  border-radius: clamp(0px, 0.5vw, 4px);
-  border: 1px solid #272323;
+  width: 100vw;
+  min-height: 100dvh;
+  margin: 0;
+  border-radius: 0;
+  border: 0;
   overflow: hidden;
   background: var(--shell-bg);
 }
@@ -637,7 +637,7 @@ body,
 
 @media (min-width: 1400px) {
   .teacher-shell {
-    width: min(1400px, calc(100vw - 48px));
+    width: 100vw;
   }
 
   .teacher-card-row {
