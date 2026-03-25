@@ -15,6 +15,25 @@ const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
 });
 
+// Helper: submit form-data to FastAPI with correct multipart boundaries
+const submitFormData = (url, fd) => {
+  return new Promise((resolve, reject) => {
+    fd.submit(url, (err, res) => {
+      if (err) return reject(err);
+      let body = "";
+      res.on("data", (chunk) => (body += chunk));
+      res.on("end", () => {
+        try {
+          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: JSON.parse(body) });
+        } catch (e) {
+          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: body });
+        }
+      });
+      res.on("error", reject);
+    });
+  });
+};
+
 // Helper for Google Gemini JSON extraction
 const extractJson = (text) => {
   if (!text) return null;
@@ -153,33 +172,32 @@ Do not include backticks, markdown, or text outside the raw JSON array.`;
       // Update exam with criteria
       await Exam.findByIdAndUpdate(req.params.id, { criteria: parsed });
 
-      // ── AI Engine Setup (fire-and-forget, non-blocking) ──
-      // Forward the QP and AK to the FastAPI engine so it's ready for grading
+      // ── AI Engine Setup ──
+      // Forward QP and AK to FastAPI so it's ready for grading
       try {
+        // Write buffers to temp files so form-data can stream them properly
+        const tmpSetup = path.join(os.tmpdir(), `setup_${req.params.id}`);
+        fs.mkdirSync(tmpSetup, { recursive: true });
+
+        const qpTmp = path.join(tmpSetup, questionPaper[0].originalname || "question_paper.pdf");
+        const akTmp = path.join(tmpSetup, answerKey[0].originalname || "answer_key.pdf");
+        fs.writeFileSync(qpTmp, questionPaper[0].buffer);
+        fs.writeFileSync(akTmp, answerKey[0].buffer);
+
         const fd = new FormData();
-        fd.append("question_paper", questionPaper[0].buffer, {
-          filename: questionPaper[0].originalname || "question_paper.pdf",
-          contentType: "application/pdf",
-        });
-        fd.append("answer_key", answerKey[0].buffer, {
-          filename: answerKey[0].originalname || "answer_key.pdf",
-          contentType: "application/pdf",
-        });
+        fd.append("question_paper", fs.createReadStream(qpTmp));
+        fd.append("answer_key", fs.createReadStream(akTmp));
 
-        const aiRes = await fetch(`${AI_ENGINE_URL}/api/v1/exam/setup`, {
-          method: "POST",
-          body: fd,
-          headers: fd.getHeaders ? fd.getHeaders() : {},
-        });
+        const aiRes = await submitFormData(`${AI_ENGINE_URL}/api/v1/exam/setup`, fd);
 
-        if (aiRes.ok) {
-          const aiData = await aiRes.json();
-          if (aiData.status === "success" && aiData.exam_id) {
-            await Exam.findByIdAndUpdate(req.params.id, { aiExamId: aiData.exam_id });
-            console.log(`[AI Engine] Exam registered: ${aiData.exam_id}`);
-          }
+        // Cleanup temp files
+        try { fs.rmSync(tmpSetup, { recursive: true, force: true }); } catch(e) {}
+
+        if (aiRes.ok && aiRes.data?.status === "success" && aiRes.data?.exam_id) {
+          await Exam.findByIdAndUpdate(req.params.id, { aiExamId: aiRes.data.exam_id });
+          console.log(`[AI Engine] Exam registered: ${aiRes.data.exam_id}`);
         } else {
-          console.warn("[AI Engine] Setup failed, grading will still work with fallback.");
+          console.warn("[AI Engine] Setup response:", aiRes.data);
         }
       } catch (aiErr) {
         console.warn("[AI Engine] Setup unreachable, continuing without AI setup:", aiErr.message);
@@ -284,12 +302,8 @@ router.post("/:id/grade-all", async (req, res) => {
       });
     }
 
-    // Send to FastAPI grade endpoint
-    const aiRes = await fetch(`${AI_ENGINE_URL}/api/v1/exam/${exam.aiExamId}/grade`, {
-      method: "POST",
-      body: fd,
-      headers: fd.getHeaders ? fd.getHeaders() : {},
-    });
+    // Send to FastAPI grade endpoint using form-data's native submit
+    const aiRes = await submitFormData(`${AI_ENGINE_URL}/api/v1/exam/${exam.aiExamId}/grade`, fd);
 
     // Clean up temp files
     try {
@@ -297,8 +311,7 @@ router.post("/:id/grade-all", async (req, res) => {
     } catch (e) { /* ignore cleanup errors */ }
 
     if (!aiRes.ok) {
-      const errData = await aiRes.text();
-      return res.status(500).json({ error: "AI Engine grading failed", details: errData });
+      return res.status(500).json({ error: "AI Engine grading failed", details: aiRes.data });
     }
 
     await Exam.findByIdAndUpdate(examId, { status: "Processing" });
