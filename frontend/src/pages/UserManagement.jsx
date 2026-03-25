@@ -6,15 +6,19 @@ export default function UserManagement() {
   const [activeTab, setActiveTab] = useState("teacher");
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Modals state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
+  
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
-    password: "", // Optional: If Firebase auth creates it
-    role: "teacher"
+    role: "student"
   });
 
   useEffect(() => {
@@ -34,36 +38,80 @@ export default function UserManagement() {
     }
   };
 
-  const handleAddUser = async (e) => {
+  const handleSaveUser = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Add name if backend mapped it to displayName
-        body: JSON.stringify({ email: formData.email, role: formData.role, displayName: formData.name }) 
-      });
-      if (res.ok) {
-        setIsModalOpen(false);
-        setFormData({ name: "", email: "", password: "", role: activeTab });
-        fetchUsers();
+      if (editingUserId) {
+        // Edit User
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${editingUserId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: formData.role }) 
+        });
+        if (res.ok) {
+          setIsModalOpen(false);
+          setEditingUserId(null);
+          toast.success("User updated successfully");
+          fetchUsers();
+        } else {
+          const error = await res.json();
+          toast.error(error.error || "Failed to update user");
+        }
       } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to create user");
-        return;
+        // Add User
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formData.email, role: formData.role }) 
+        });
+        if (res.ok) {
+          setIsModalOpen(false);
+          toast.success("User created successfully");
+          fetchUsers();
+        } else {
+          const error = await res.json();
+          toast.error(error.error || "Failed to create user");
+        }
       }
     } catch (error) {
       console.error(error);
+      toast.error("An error occurred");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+  const openAddModal = () => {
+    setEditingUserId(null);
+    setFormData({ email: "", role: activeTab });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (user) => {
+    setEditingUserId(user._id);
+    setFormData({ email: user.email, role: user.role });
+    setIsModalOpen(true);
+  };
+
+  const openDeleteModal = (id) => {
+    setUserToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${id}`, { method: "DELETE" });
-      if (res.ok) fetchUsers();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userToDelete}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("User deleted successfully");
+        setIsDeleteModalOpen(false);
+        setUserToDelete(null);
+        fetchUsers();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to delete user");
+      }
     } catch (error) {
       console.error(error);
+      toast.error("An error occurred");
     }
   };
 
@@ -72,10 +120,10 @@ export default function UserManagement() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <h1 style={{ margin: 0, fontSize: "28px", color: "#1e293b" }}>User Management</h1>
         <button 
-          onClick={() => { setFormData({ ...formData, role: activeTab }); setIsModalOpen(true); }}
-          style={{ backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}
+          onClick={openAddModal}
+          style={{ backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px" }}
         >
-          + Add User
+          <UserPlus size={18} /> Add User
         </button>
       </div>
 
@@ -130,12 +178,16 @@ export default function UserManagement() {
             ) : (
               users.map(u => (
                 <tr key={u._id} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                  <td style={{ padding: "12px 16px" }}>{u.displayName || "N/A"}</td>
+                  <td style={{ padding: "12px 16px" }}>{u.displayName || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Pending Login</span>}</td>
                   <td style={{ padding: "12px 16px" }}>{u.email}</td>
                   <td style={{ padding: "12px 16px", textTransform: "capitalize" }}>{u.role}</td>
                   <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    <button style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", marginRight: "12px" }}>Edit</button>
-                    <button onClick={() => handleDelete(u._id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer" }}>Delete</button>
+                    <button onClick={() => openEditModal(u)} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", marginRight: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <FileEdit size={16} /> Edit
+                    </button>
+                    <button onClick={() => openDeleteModal(u._id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <Trash2 size={16} /> Delete
+                    </button>
                   </td>
                 </tr>
               ))
@@ -144,26 +196,62 @@ export default function UserManagement() {
         </table>
       </div>
 
+      {/* Add / Edit Modal */}
       {isModalOpen && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-          <div style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "400px" }}>
-            <h2 style={{ margin: "0 0 16px 0", fontSize: "20px" }}>Add {formData.role}</h2>
-            <form onSubmit={handleAddUser} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <input 
-                type="text" placeholder="Name" required
-                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-              />
-              <input 
-                type="email" placeholder="Email" required
-                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-              />
+          <div style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "400px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ margin: 0, fontSize: "20px" }}>{editingUserId ? "Edit User role" : "Add New User"}</h2>
+              <button type="button" onClick={() => setIsModalOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveUser} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#475569", marginBottom: "4px" }}>Email</label>
+                <input 
+                  type="email" placeholder="example@grad-e.com" required
+                  disabled={editingUserId !== null}
+                  value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: editingUserId ? "#f1f5f9" : "#fff", color: editingUserId ? "#94a3b8" : "#000" }}
+                />
+                {editingUserId && <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>Email address cannot be modified after creation.</p>}
+              </div>
+              
+              <div>
+                <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#475569", marginBottom: "4px" }}>Role</label>
+                <select 
+                  value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: "#fff" }}
+                >
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: "6px", background: "none", cursor: "pointer" }}>Cancel</button>
-                <button type="submit" style={{ padding: "8px 16px", border: "none", borderRadius: "6px", background: "#3b82f6", color: "#fff", cursor: "pointer" }}>Save User</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: "6px", background: "none", cursor: "pointer", color: "#475569", fontWeight: "500" }}>Cancel</button>
+                <button type="submit" style={{ padding: "8px 16px", border: "none", borderRadius: "6px", background: "#3b82f6", color: "#fff", cursor: "pointer", fontWeight: "500" }}>
+                  {editingUserId ? "Save Changes" : "Create User"}
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+          <div style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "400px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+            <h2 style={{ margin: "0 0 12px 0", fontSize: "20px", color: "#0f172a" }}>Delete User?</h2>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", lineHeight: "1.5" }}>Are you sure you want to permanently delete this user? All their submissions and associations will be unlinked. This action cannot be undone.</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <button type="button" onClick={() => setIsDeleteModalOpen(false)} style={{ padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: "6px", background: "none", cursor: "pointer", color: "#475569", fontWeight: "500" }}>Cancel</button>
+              <button type="button" onClick={confirmDelete} style={{ padding: "8px 16px", border: "none", borderRadius: "6px", background: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: "500" }}>Yes, Delete</button>
+            </div>
           </div>
         </div>
       )}
