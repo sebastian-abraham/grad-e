@@ -7,11 +7,10 @@ os.environ['PYTHONHTTPSVERIFY'] = '0'
 
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from dotenv import load_dotenv
-load_dotenv()
 import shutil
-import os
 import uuid
+import json
+import glob
 
 from engine.router.logic import GradeRouter
 
@@ -74,4 +73,34 @@ async def grade_batch(
         "job_id": f"job_{uuid.uuid4().hex[:8]}",
         "batch_size": len(saved_files),
         "message": "Batch received. Routing to primary cloud cluster..."
+    }
+
+@app.get("/api/v1/exam/{exam_id}/reports")
+async def get_reports(exam_id: str):
+    """Endpoint 3: Fetch all completed grading reports for a specific exam."""
+    
+    reports_dir = f"engine/storage/reports/{exam_id}"
+    
+    if not os.path.exists(reports_dir):
+        return {"status": "pending", "message": "Grading has not started or directory not found.", "reports": []}
+    
+    report_files = glob.glob(f"{reports_dir}/*_report.json")
+    reports = []
+    
+    for file_path in report_files:
+        try:
+            with open(file_path, "r") as f:
+                report_data = json.load(f)
+                reports.append(report_data)
+        except Exception as e:
+            print(f"Error reading {file_path}: {e}")
+            continue
+            
+    if not reports:
+        return {"status": "processing", "message": "Grading in progress, no reports finalized yet.", "reports": []}
+        
+    return {
+        "status": "completed", 
+        "total_graded": len(reports), 
+        "reports": reports
     }
