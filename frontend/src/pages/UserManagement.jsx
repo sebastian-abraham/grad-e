@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { Ban, Pencil, Search, UserPlus, FileEdit, Trash2, X, UserPlus } from "lucide-react";
+import { Ban, Pencil, Search,FileEdit, Trash2, X, UserPlus } from "lucide-react";
 
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState("teacher");
