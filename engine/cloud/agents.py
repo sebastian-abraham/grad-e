@@ -91,15 +91,27 @@ class MultiAgentGrader:
         raise Exception("[FATAL] All keys exhausted or persistent permission errors.")
 
     def upload_pdf(self, pdf_path):
-        print(f"[SYSTEM] Uploading {pdf_path} to Gemini...")
+        print(f"[SYSTEM] Uploading {os.path.basename(pdf_path)} to Gemini...")
         return self.client.files.upload(file=pdf_path)
 
     def run_agent_workflow(self, script_path, question_paper_path=None):
         try:
-            # Initial Context Setup
-            self.active_file_paths = [script_path]
+            # 1. Automatically infer where the answer key SHOULD be
+            exam_dir = os.path.dirname(question_paper_path) if question_paper_path else os.path.dirname(os.path.dirname(script_path))
+            answer_key_path = os.path.join(exam_dir, "answer_key.pdf")
+
+            # 2. Dynamic Context Setup
+            self.active_file_paths = []
             if question_paper_path and question_paper_path != script_path:
-                self.active_file_paths.insert(0, question_paper_path)
+                self.active_file_paths.append(question_paper_path)
+            
+            # Check if the key actually exists on the hard drive
+            has_key = False
+            if os.path.exists(answer_key_path):
+                self.active_file_paths.append(answer_key_path)
+                has_key = True
+            
+            self.active_file_paths.append(script_path)
             
             # Perform initial upload for Key #1
             self.active_file_objects = [self.upload_pdf(fp) for fp in self.active_file_paths]
@@ -110,7 +122,7 @@ class MultiAgentGrader:
             manager_instr = "Analyze structure and extract student's handwritten answers to 'extracted_text' field."
             
             response = self.safe_generate(
-                contents=[manager_instr], # safe_generate will prepend files via use_vision
+                contents=[manager_instr], 
                 config=types.GenerateContentConfig(
                     system_instruction=LAYOUT_MANAGER_PROMPT,
                     response_mime_type="application/json"
@@ -123,11 +135,11 @@ class MultiAgentGrader:
             print(f"[MANAGER] Found {len(task_list)} tasks. Launching Hybrid Graders...")
 
             final_report = {
-                "examTitle": manager_data.get("examTitle", "Unknown Exam"),
-                "studentName": manager_data.get("studentName", "Unknown Student"),
-                "score": 0, "total": 0, "questions": []
+                "student_id": os.path.basename(script_path).replace('.pdf', ''),
+                "score": 0, 
+                "total": 0, 
+                "questions": []
             }
-            
             # Hybrid Specialist Loop
             for task in task_list:
                 q_id = task.get("id", "Unknown")
@@ -135,15 +147,31 @@ class MultiAgentGrader:
                 max_pts = task.get("max_points", 5)
                 student_work = task.get("extracted_text", "No text extracted")
 
-                specialist_input = f"Question: {task.get('context')}\nStudent: {student_work}\nMax: {max_pts}"
-                is_vision_task = (q_type == "diagram")
-                
-                if is_vision_task:
-                    print(f"   --> {q_id}: Vision-based Grading...")
-                    sys_inst = DIAGRAM_AGENT_PROMPT
+                # ==========================================
+                # FALLBACK LOGIC INJECTION
+                # ==========================================
+                if has_key:
+                    mode_instruction = "\n[MODE: COMPARATIVE GRADING] An official Answer Key is attached. Evaluate the student's answer strictly against the methodology and final answer in the Answer Key."
+                    status_print = f"   --> {q_id}: {q_type.capitalize()} Reasoning (using Answer Key)..."
                 else:
-                    print(f"   --> {q_id}: Text-based Reasoning...")
-                    sys_inst = MATH_AGENT_PROMPT if q_type == "math" else TEXT_AGENT_PROMPT
+                    mode_instruction = "\n[MODE: ZERO-SHOT AUTONOMOUS GRADING] No Answer Key is provided. You MUST derive the correct solution from scratch using your expert knowledge, then evaluate the student's logic against your own derivation."
+                    status_print = f"   ☁️ [CLOUD] No key found for Q{q_id}. Deriving {q_type} from scratch..."
+
+                print(status_print)
+
+                specialist_input = f"Question: {task.get('context')}\nStudent: {student_work}\nMax: {max_pts}{mode_instruction}"
+                
+                # We force use_vision=True for ALL tasks now. 
+                # Why? Because if there is an Answer Key, Gemini needs vision to read it. 
+                # If there is NO Answer Key, Gemini needs vision to derive math from the original Question Paper PDF.
+                is_vision_task = True 
+                
+                if q_type == "diagram":
+                    sys_inst = DIAGRAM_AGENT_PROMPT
+                elif q_type == "math":
+                    sys_inst = MATH_AGENT_PROMPT 
+                else:
+                    sys_inst = TEXT_AGENT_PROMPT
 
                 time.sleep(4) 
                 
@@ -170,7 +198,6 @@ class MultiAgentGrader:
                         "studentAnswer": student_work
                     })
 
-           
             final_report["score"] = round(final_report["score"] * 2) / 2
             final_report["points"] = f"{final_report['score']}/{final_report['total']}"
             final_report["score"] = min(final_report["score"], final_report["total"])
