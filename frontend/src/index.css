@@ -686,7 +686,7 @@ body,
 
 .create-exam-step-chip span {
   text-align: right;
-  color: #564338;
+  color: var(--accent-strong);
   font-size: 0.76rem;
   font-weight: 700;
 }
@@ -703,16 +703,21 @@ body,
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #b0611d;
+  background: var(--accent);
   transition: width 0.32s ease;
 }
 
 .create-exam-step-track.transitioning {
-  box-shadow: inset 0 0 0 1px rgba(176, 97, 29, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(62, 101, 204, 0.18);
 }
 
 .create-exam-step-track.transitioning i {
-  background: linear-gradient(90deg, #b0611d 0%, #c8772f 50%, #b0611d 100%);
+  background: linear-gradient(
+    90deg,
+    var(--accent-strong) 0%,
+    var(--accent) 50%,
+    var(--accent-strong) 100%
+  );
   background-size: 180% 100%;
   animation: create-exam-track-flow 0.9s linear infinite;
 }
@@ -812,14 +817,14 @@ body,
 
 .create-exam-btn-primary {
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), #4b76e1);
-  box-shadow: 0 10px 22px rgba(56, 97, 199, 0.28);
+  background: var(--accent-strong);
+  box-shadow: 0 10px 22px rgba(46, 86, 190, 0.28);
 }
 
 .create-exam-btn-warm {
   color: #fff;
-  background: linear-gradient(135deg, #b0611d, #c8772f);
-  box-shadow: 0 10px 20px rgba(176, 97, 29, 0.27);
+  background: var(--accent-strong);
+  box-shadow: 0 10px 20px rgba(46, 86, 190, 0.27);
 }
 
 .create-exam-btn-muted {
@@ -856,7 +861,7 @@ body,
 
 .create-exam-dropzone {
   position: relative;
-  border: 2px dashed #d9beac;
+  border: 2px dashed rgba(62, 101, 204, 0.35);
   background: #fff;
   border-radius: 16px;
   min-height: 182px;
@@ -868,7 +873,7 @@ body,
   text-align: center;
   gap: 8px;
   cursor: pointer;
-  color: #76523a;
+  color: var(--accent-strong);
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
@@ -877,8 +882,8 @@ body,
 
 .create-exam-dropzone:hover {
   transform: translateY(-2px);
-  border-color: #c48f6d;
-  box-shadow: 0 10px 22px rgba(101, 74, 52, 0.11);
+  border-color: var(--accent);
+  box-shadow: 0 10px 22px rgba(62, 101, 204, 0.18);
 }
 
 .create-exam-dropzone strong {
