@@ -362,16 +362,28 @@ router.get("/:id/grade-status", async (req, res) => {
       });
 
       if (matchingSub && matchingSub.status !== "Graded") {
-        // Map AI report questions to our feedback schema
-        const feedback = (report.questions || []).map(q => ({
-          questionNumber: q.id || "Unknown",
-          pointsAwarded: q.points || 0,
-          maxPoints: q.max_points || 0,
-          studentAnswer: q.studentAnswer || "",
-          correctAnswer: q.correctAnswer || "",
-          teacherFeedback: q.feedback || "",
-          status: q.status || "ungraded",
-        }));
+        // Map AI report questions to our feedback schema,
+        // cross-referencing with exam criteria for maxPoints and question prompt
+        const feedback = (report.questions || []).map(q => {
+          const qId = q.id || "Unknown";
+          // Find matching criteria by question number (try exact match, then normalized)
+          const matchedCriteria = (exam.criteria || []).find(c =>
+            c.questionNumber === qId ||
+            c.questionNumber === qId.replace(/^Q/i, "") ||
+            `Q${c.questionNumber}` === qId
+          );
+
+          return {
+            questionNumber: qId,
+            pointsAwarded: q.points || 0,
+            maxPoints: matchedCriteria?.marks || q.max_points || 0,
+            studentAnswer: q.studentAnswer || "",
+            correctAnswer: q.correctAnswer || "",
+            teacherFeedback: q.feedback || "",
+            questionPrompt: matchedCriteria?.prompt || q.context || "",
+            status: q.status || "ungraded",
+          };
+        });
 
         await Submission.findByIdAndUpdate(matchingSub._id, {
           score: report.score || 0,

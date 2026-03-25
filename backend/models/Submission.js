@@ -33,6 +33,7 @@ const submissionSchema = new mongoose.Schema(
     feedback: [
       {
         questionNumber: String,
+        questionPrompt: String, // Question text from exam criteria
         pointsAwarded: Number,
         maxPoints: Number,
         studentAnswer: String,
