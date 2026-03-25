@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react";
+import toast from "react-hot-toast";
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Award } from "lucide-react";
 
 export default function GradingView() {
   const { id, subId } = useParams();
@@ -72,14 +73,21 @@ export default function GradingView() {
 
   const confirmGrade = async () => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions/${subId}/grade`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions/${subId}/grade`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ score, feedback })
       });
-      alert("Grade updated successfully!");
+      if (response.ok) {
+        toast.success("Grade updated successfully!");
+        fetchData(); // Refresh UI with updated score
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Failed to update grade.");
+      }
     } catch(e) {
       console.error(e);
+      toast.error("An error occurred while updating grade.");
     }
   };
 

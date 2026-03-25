@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, FileText, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { Plus, FileText, ChevronRight, Upload, Play, LoaderCircle, PencilLine } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function TeacherDashboard() {
@@ -36,75 +37,116 @@ export default function TeacherDashboard() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Draft": return { bg: "#f1f5f9", text: "#64748b" };
-      case "Setup Complete": return { bg: "#e0f2fe", text: "#0284c7" };
-      case "Sheets Uploaded": return { bg: "#fef3c7", text: "#d97706" };
-      case "Processing": return { bg: "#ede9fe", text: "#7c3aed" };
-      case "Graded": return { bg: "#dcfce3", text: "#166534" };
-      default: return { bg: "#f1f5f9", text: "#64748b" };
+      case "Draft":
+        return { bg: "#eef0f3", text: "#5a6675" };
+      case "Setup Complete":
+        return { bg: "#f8d58f", text: "#8a5203" };
+      case "Sheets Uploaded":
+        return { bg: "#8fddb5", text: "#065f46" };
+      case "Processing":
+        return { bg: "#f5bb8d", text: "#9a4600" };
+      case "Graded":
+        return { bg: "#54b67e", text: "#ffffff" };
+      default:
+        return { bg: "#eef0f3", text: "#5a6675" };
     }
   };
 
-  if (loading) return <div>Loading dashboard...</div>;
+  const getActionConfig = (status) => {
+    switch (status) {
+      case "Draft":
+        return { icon: <PencilLine size={14} />, label: "Resume Setup", className: "ghost" };
+      case "Setup Complete":
+        return { icon: <Upload size={14} />, label: "Ready for Upload", className: "subtle" };
+      case "Sheets Uploaded":
+        return { icon: <Play size={14} />, label: "Process", className: "primary" };
+      case "Processing":
+        return { icon: <LoaderCircle size={14} className="spin" />, label: "Scanning Sheets", className: "subtle" };
+      case "Graded":
+        return { icon: <ChevronRight size={14} />, label: "View Results", className: "primary" };
+      default:
+        return { icon: <ChevronRight size={14} />, label: "View", className: "ghost" };
+    }
+  };
+
+  if (loading) return <div className="teacher-loading">Loading dashboard...</div>;
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
-        <h1 style={{ margin: 0, fontSize: "28px", color: "#1e293b" }}>My Exams</h1>
-        <button 
-          onClick={() => navigate("/teacher/create-exam")}
-          style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}
-        >
-          <Plus size={20} /> New Exam
+    <section className="teacher-dashboard">
+      <motion.div
+        className="teacher-dashboard-toolbar"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <h1 className="teacher-dashboard-title">Exams</h1>
+        <button onClick={() => navigate("/teacher/create-exam")} className="teacher-primary-btn teacher-primary-btn--caps">
+          <Plus size={18} /> New Exam
         </button>
-      </div>
+      </motion.div>
 
       {Object.keys(groupedExams).length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px", backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-          <div style={{ color: "#64748b", marginBottom: "16px" }}>No exams created yet.</div>
-          <button onClick={() => navigate("/teacher/create-exam")} style={{ backgroundColor: "#1e293b", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer" }}>Create your first exam</button>
-        </div>
+        <motion.div
+          className="teacher-empty"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <p>No exams created yet.</p>
+          <button onClick={() => navigate("/teacher/create-exam")} className="teacher-primary-btn">
+            Create your first exam
+          </button>
+        </motion.div>
       ) : (
-        Object.keys(groupedExams).map(subject => (
-          <div key={subject} style={{ marginBottom: "32px" }}>
-            <h2 style={{ fontSize: "20px", color: "#334155", marginBottom: "16px", paddingBottom: "8px", borderBottom: "2px solid #e2e8f0" }}>
-              {subject}
-            </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
-              {groupedExams[subject].map(exam => {
+        Object.keys(groupedExams).map((subject, subjectIdx) => (
+          <motion.div
+            key={subject}
+            className="teacher-subject"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.42, delay: subjectIdx * 0.07 }}
+          >
+            <div className="teacher-subject-head">
+              <h2 className="teacher-subject-title">{subject}</h2>
+              <span className="teacher-view-all">View All</span>
+            </div>
+
+            <div className="teacher-card-row">
+              {groupedExams[subject].map((exam, examIdx) => {
                 const colors = getStatusColor(exam.status);
+                const action = getActionConfig(exam.status);
                 return (
-                  <Link key={exam._id} to={`/teacher/exams/${exam._id}`} style={{ textDecoration: "none" }}>
-                    <div style={{
-                      backgroundColor: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e2e8f0",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)", transition: "transform 0.2s, box-shadow 0.2s",
-                      cursor: "pointer", display: "flex", flexDirection: "column", gap: "12px", height: "100%"
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0,0,0,0.1)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)"; }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#0f172a", fontWeight: "600", fontSize: "18px" }}>
-                          <FileText size={20} color="#3b82f6" /> {exam.name}
-                        </div>
-                        <span style={{ backgroundColor: colors.bg, color: colors.text, padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "600" }}>
-                          {exam.status}
+                  <motion.div
+                    key={exam._id}
+                    className="teacher-card-wrap"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: examIdx * 0.05 }}
+                  >
+                    <Link to={`/teacher/exams/${exam._id}`} className="teacher-exam-card">
+                      <div className="teacher-exam-top">
+                        <span className="teacher-chip" style={{ backgroundColor: colors.bg, color: colors.text }}>
+                          {exam.status.toUpperCase()}
                         </span>
+                        <FileText size={17} color="#6b7481" />
                       </div>
-                      <div style={{ fontSize: "14px", color: "#64748b" }}>Class: {exam.classId?.name}</div>
-                      <div style={{ fontSize: "14px", color: "#64748b" }}>Date: {exam.date ? new Date(exam.date).toLocaleDateString() : "TBD"}</div>
-                      
-                      <div style={{ marginTop: "auto", display: "flex", justifyContent: "flex-end", alignItems: "center", color: "#3b82f6", fontSize: "14px", fontWeight: "500", paddingTop: "12px", borderTop: "1px solid #f1f5f9" }}>
-                        View Details <ChevronRight size={16} />
+
+                      <h3 className="teacher-exam-title">{exam.name}</h3>
+                      <p className="teacher-meta">{exam.date ? new Date(exam.date).toLocaleDateString() : "No date set"}</p>
+                      <p className="teacher-meta teacher-meta-soft">Class: {exam.classId?.name || "Not set"}</p>
+
+                      <div className={`teacher-card-action ${action.className}`}>
+                        {action.icon}
+                        {action.label}
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                  </motion.div>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         ))
       )}
-    </div>
+    </section>
   );
 }

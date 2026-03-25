@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { GraduationCap } from "lucide-react";
+import toast from "react-hot-toast";
+import { Users, FileEdit, Trash2, X, Plus } from "lucide-react";
 
 export default function ClassManagement() {
   const [classes, setClasses] = useState([]);
@@ -38,7 +39,7 @@ export default function ClassManagement() {
         fetchClasses();
       } else {
         const err = await res.json();
-        alert(err.error);
+        toast.error(err.error || "Failed to save class");
       }
     } catch (error) {
       console.error(error);

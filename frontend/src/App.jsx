@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import { useAuth } from "./contexts/AuthContext";
 import Login from "./components/Login";
 import AdminLayout from "./components/AdminLayout";
@@ -26,6 +27,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <Routes>
         <Route 
           path="/" 

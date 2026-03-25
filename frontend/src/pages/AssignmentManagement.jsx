@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ClipboardList, Plus } from "lucide-react";
+import toast from "react-hot-toast";
+import { Link, Briefcase, Plus, X } from "lucide-react";
 
 export default function AssignmentManagement() {
   const [assignments, setAssignments] = useState([]);
@@ -50,7 +51,7 @@ export default function AssignmentManagement() {
         fetchData(); // reload
       } else {
         const err = await res.json();
-        alert(err.error);
+        toast.error(err.error || "Failed to create assignment");
       }
     } catch (error) {
       console.error(error);

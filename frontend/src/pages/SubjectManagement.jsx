@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { BookOpen } from "lucide-react";
+import toast from "react-hot-toast";
+import { BookOpen, Plus, FileEdit, Trash2, X } from "lucide-react";
 
 export default function SubjectManagement() {
   const [subjects, setSubjects] = useState([]);
@@ -37,7 +38,7 @@ export default function SubjectManagement() {
         fetchSubjects();
       } else {
         const err = await res.json();
-        alert(err.error);
+        toast.error(err.error || "Failed to save subject");
       }
     } catch (error) {
       console.error(error);

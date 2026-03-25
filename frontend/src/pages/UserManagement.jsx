@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import toast from "react-hot-toast";
+import { Search, UserPlus, FileEdit, Trash2, X } from "lucide-react";
 
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState("teacher");
@@ -48,7 +49,8 @@ export default function UserManagement() {
         fetchUsers();
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to create user");
+        toast.error(error.error || "Failed to create user");
+        return;
       }
     } catch (error) {
       console.error(error);

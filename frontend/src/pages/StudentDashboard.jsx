@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FileText, ChevronRight, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { CheckCircle2, ChevronRight, Clock3, FileText, LoaderCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function StudentDashboard() {
@@ -26,90 +27,148 @@ export default function StudentDashboard() {
   };
 
   const groupedExams = exams.reduce((acc, exam) => {
-    const subName = exam.subjectId?.name || "Other";
-    if (!acc[subName]) acc[subName] = [];
-    acc[subName].push(exam);
+    if (exam.status === "Draft") return acc;
+    const subject = exam.subjectId?.name || "Other";
+    if (!acc[subject]) acc[subject] = [];
+    acc[subject].push(exam);
     return acc;
   }, {});
 
-  const getStatusDisplay = (exam) => {
-    if (exam.status === "Draft") return null;
+  const getStatusColor = (exam) => {
+    if (exam.status === "Graded" && exam.mySubmission?.score !== undefined) {
+      return { bg: "#54b67e", text: "#ffffff", label: "GRADED" };
+    }
+    if (exam.status === "Graded" && !exam.mySubmission) {
+      return { bg: "#f5bb8d", text: "#9a4600", label: "MISSED" };
+    }
+    if (exam.mySubmission) {
+      return { bg: "#f8d58f", text: "#8a5203", label: "AWAITING" };
+    }
+    if (exam.status === "Processing") {
+      return { bg: "#f5bb8d", text: "#9a4600", label: "PROCESSING" };
+    }
+    return { bg: "#eef0f3", text: "#5a6675", label: "PENDING" };
+  };
 
-    if (exam.status === "Graded") {
-      const score = exam.mySubmission?.score;
-      if (score !== undefined) {
-         return { icon: <CheckCircle2 size={16} />, text: `Score: ${score}/${exam.totalMarks}`, color: "#166534", bg: "#dcfce3" };
-      }
-      return { icon: <AlertCircle size={16} />, text: "Missed / No Submission", color: "#991b1b", bg: "#fee2e2" };
+  const getActionConfig = (exam) => {
+    const hasResult = exam.status === "Graded" && exam.mySubmission?._id;
+
+    if (hasResult) {
+      return {
+        icon: <ChevronRight size={14} />,
+        label: "View Result",
+        className: "primary",
+        to: `/student/exams/${exam._id}/result/${exam.mySubmission._id}`,
+      };
     }
 
     if (exam.mySubmission) {
-      return { icon: <Clock size={16} />, text: "Awaiting Grading", color: "#b45309", bg: "#fef3c7" };
+      return { icon: <Clock3 size={14} />, label: "Awaiting Grading", className: "subtle" };
     }
 
-    return { icon: <Clock size={16} />, text: "Upcoming / Processing", color: "#475569", bg: "#f1f5f9" };
+    if (exam.status === "Processing") {
+      return {
+        icon: <LoaderCircle size={14} className="spin" />,
+        label: "Processing",
+        className: "subtle",
+      };
+    }
+
+    return { icon: <Clock3 size={14} />, label: "Results Unavailable", className: "ghost" };
   };
 
-  if (loading) return <div>Loading dashboard...</div>;
+  if (loading) return <div className="teacher-loading">Loading dashboard...</div>;
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
-        <h1 style={{ margin: 0, fontSize: "28px", color: "#1e293b" }}>My Classes & Exams</h1>
-      </div>
+    <section className="teacher-dashboard">
+      <motion.div
+        className="teacher-dashboard-toolbar"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <h1 className="teacher-dashboard-title">Academic Overview</h1>
+        <div className="teacher-view-all">Student Dashboard</div>
+      </motion.div>
 
       {Object.keys(groupedExams).length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px", backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-          <div style={{ color: "#64748b", fontSize: "16px" }}>You do not have any active classes or exams yet.</div>
-        </div>
+        <motion.div
+          className="teacher-empty"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <p>You do not have any active classes or exams yet.</p>
+        </motion.div>
       ) : (
-        Object.keys(groupedExams).map(subject => (
-          <div key={subject} style={{ marginBottom: "32px" }}>
-            <h2 style={{ fontSize: "20px", color: "#334155", marginBottom: "16px", paddingBottom: "8px", borderBottom: "2px solid #e2e8f0" }}>
-              {subject}
-            </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "20px" }}>
-              {groupedExams[subject].map(exam => {
-                if (exam.status === "Draft") return null; // Hide drafts from students
+        Object.keys(groupedExams).map((subject, subjectIdx) => (
+          <motion.div
+            key={subject}
+            className="teacher-subject"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.42, delay: subjectIdx * 0.07 }}
+          >
+            <div className="teacher-subject-head">
+              <h2 className="teacher-subject-title">{subject}</h2>
+              <span className="teacher-view-all">{groupedExams[subject].length} Exams</span>
+            </div>
 
-                const statusDisplay = getStatusDisplay(exam);
-                const isGraded = exam.status === "Graded" && exam.mySubmission?.score !== undefined;
+            <div className="teacher-card-row">
+              {groupedExams[subject].map((exam, examIdx) => {
+                const status = getStatusColor(exam);
+                const action = getActionConfig(exam);
+                const score = exam.mySubmission?.score;
 
                 return (
-                  <div key={exam._id} style={{
-                    backgroundColor: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e2e8f0",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "12px", height: "100%"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#0f172a", fontWeight: "600", fontSize: "18px" }}>
-                        <FileText size={20} color="#4f46e5" /> {exam.name}
+                  <motion.div
+                    key={exam._id}
+                    className="teacher-card-wrap"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: examIdx * 0.05 }}
+                  >
+                    <div className="teacher-exam-card">
+                      <div className="teacher-exam-top">
+                        <span className="teacher-chip" style={{ backgroundColor: status.bg, color: status.text }}>
+                          {status.label}
+                        </span>
+                        <FileText size={17} color="#6b7481" />
                       </div>
-                    </div>
-                    
-                    <div style={{ fontSize: "14px", color: "#64748b" }}>Date: {exam.date ? new Date(exam.date).toLocaleDateString() : "TBD"}</div>
-                    
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", backgroundColor: statusDisplay.bg, color: statusDisplay.color, padding: "6px 12px", borderRadius: "20px", fontSize: "14px", fontWeight: "600", alignSelf: "flex-start", marginTop: "4px" }}>
-                      {statusDisplay.icon} {statusDisplay.text}
-                    </div>
 
-                    <div style={{ marginTop: "auto", paddingTop: "16px", borderTop: "1px solid #f8fafc", ...(!isGraded ? {opacity: 0.5, cursor: "not-allowed"} : {})}}>
-                       {isGraded ? (
-                         <Link to={`/student/exams/${exam._id}/result/${exam.mySubmission._id}`} style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", color: "#4f46e5", fontSize: "14px", fontWeight: "600", textDecoration: "none" }}>
-                           View Detailed Results <ChevronRight size={16} />
-                         </Link>
-                       ) : (
-                         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", color: "#94a3b8", fontSize: "14px", fontWeight: "600" }}>
-                           Results Unavailable <ChevronRight size={16} />
-                         </div>
-                       )}
+                      <h3 className="teacher-exam-title">{exam.name}</h3>
+                      <p className="teacher-meta">
+                        {exam.date ? new Date(exam.date).toLocaleDateString() : "No date set"}
+                      </p>
+                      <p className="teacher-meta teacher-meta-soft">
+                        {score !== undefined ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <CheckCircle2 size={14} color="#3e65cc" /> Score: {score}/{exam.totalMarks}
+                          </span>
+                        ) : (
+                          "Result pending"
+                        )}
+                      </p>
+
+                      {action.to ? (
+                        <Link to={action.to} className={`teacher-card-action ${action.className}`}>
+                          {action.icon}
+                          {action.label}
+                        </Link>
+                      ) : (
+                        <div className={`teacher-card-action ${action.className}`}>
+                          {action.icon}
+                          {action.label}
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         ))
       )}
-    </div>
+    </section>
   );
 }

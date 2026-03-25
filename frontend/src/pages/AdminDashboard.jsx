@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Users, BookOpen, GraduationCap, ClipboardList } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Users, BookOpen, GraduationCap, ClipboardList, LayoutDashboard, ChevronRight, Plus } from "lucide-react";
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     students: 0,
     teachers: 0,
@@ -30,63 +32,136 @@ export default function AdminDashboard() {
   };
 
   const statCards = [
-    { title: "Total Teachers", value: stats.teachers, icon: <Users size={32} color="#3b82f6" />, link: "/admin/users", bgColor: "#eff6ff" },
-    { title: "Total Students", value: stats.students, icon: <Users size={32} color="#10b981" />, link: "/admin/users", bgColor: "#ecfdf5" },
-    { title: "Total Classes", value: stats.classes, icon: <GraduationCap size={32} color="#f59e0b" />, link: "/admin/classes", bgColor: "#fffbeb" },
-    { title: "Total Subjects", value: stats.subjects, icon: <BookOpen size={32} color="#8b5cf6" />, link: "/admin/subjects", bgColor: "#f5f3ff" }
+    { id: "teachers", title: "Total Teachers", value: stats.teachers, icon: <Users size={17} color="#6b7481" />, link: "/admin/users", status: "Graded", meta: "User accounts" },
+    { id: "students", title: "Total Students", value: stats.students, icon: <Users size={17} color="#6b7481" />, link: "/admin/users", status: "Sheets Uploaded", meta: "Student profiles" },
+    { id: "classes", title: "Total Classes", value: stats.classes, icon: <GraduationCap size={17} color="#6b7481" />, link: "/admin/classes", status: "Setup Complete", meta: "Active classes" },
+    { id: "subjects", title: "Total Subjects", value: stats.subjects, icon: <BookOpen size={17} color="#6b7481" />, link: "/admin/subjects", status: "Draft", meta: "Subject catalog" },
   ];
+
+  const quickActions = [
+    { id: "users", title: "Manage Users", link: "/admin/users", icon: <Users size={17} color="#6b7481" /> },
+    { id: "classes", title: "Manage Classes", link: "/admin/classes", icon: <GraduationCap size={17} color="#6b7481" /> },
+    { id: "subjects", title: "Manage Subjects", link: "/admin/subjects", icon: <BookOpen size={17} color="#6b7481" /> },
+    { id: "assignments", title: "Manage Assignments", link: "/admin/assignments", icon: <ClipboardList size={17} color="#6b7481" /> },
+  ];
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Draft":
+        return { bg: "#eef0f3", text: "#5a6675" };
+      case "Setup Complete":
+        return { bg: "#f8d58f", text: "#8a5203" };
+      case "Sheets Uploaded":
+        return { bg: "#8fddb5", text: "#065f46" };
+      case "Processing":
+        return { bg: "#f5bb8d", text: "#9a4600" };
+      case "Graded":
+        return { bg: "#54b67e", text: "#ffffff" };
+      default:
+        return { bg: "#eef0f3", text: "#5a6675" };
+    }
+  };
 
   if (loading) return <div>Loading dashboard...</div>;
 
   return (
-    <div>
-      <h1 style={{ margin: "0 0 24px 0", fontSize: "28px", color: "#1e293b" }}>Dashboard Overview</h1>
-      
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "24px", marginBottom: "32px" }}>
-        {statCards.map((card, idx) => (
-          <div key={idx} style={{
-            backgroundColor: "#fff",
-            padding: "24px",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            display: "flex",
-            alignItems: "center",
-            gap: "20px"
-          }}>
-            <div style={{
-              width: "64px", height: "64px", borderRadius: "16px",
-              backgroundColor: card.bgColor, display: "flex", alignItems: "center", justifyContent: "center"
-            }}>
-              {card.icon}
-            </div>
-            <div>
-              <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "4px" }}>{card.title}</div>
-              <div style={{ fontSize: "28px", fontWeight: "bold", color: "#0f172a" }}>{card.value}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+    <section className="teacher-dashboard">
+      <motion.div
+        className="teacher-dashboard-toolbar"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <h1 className="teacher-dashboard-title">Admin Dashboard</h1>
+        <button onClick={() => navigate("/admin/users")} className="teacher-primary-btn teacher-primary-btn--caps">
+          <Plus size={18} /> Add User
+        </button>
+      </motion.div>
 
-      <h2 style={{ margin: "0 0 16px 0", fontSize: "20px", color: "#1e293b" }}>Quick Links</h2>
-      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-        <QuickLink to="/admin/users" icon={<Users size={20} />} text="Manage Users" />
-        <QuickLink to="/admin/classes" icon={<GraduationCap size={20} />} text="Manage Classes" />
-        <QuickLink to="/admin/subjects" icon={<BookOpen size={20} />} text="Manage Subjects" />
-        <QuickLink to="/admin/assignments" icon={<ClipboardList size={20} />} text="Manage Assignments" />
-      </div>
-    </div>
-  );
-}
+      <motion.div
+        className="teacher-subject"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <div className="teacher-subject-head">
+          <h2 className="teacher-subject-title">Platform Summary</h2>
+          <span className="teacher-view-all">Overview</span>
+        </div>
 
-function QuickLink({ to, icon, text }) {
-  return (
-    <Link to={to} style={{
-      display: "flex", alignItems: "center", gap: "8px",
-      padding: "12px 20px", backgroundColor: "#fff", borderRadius: "8px",
-      color: "#3b82f6", textDecoration: "none", fontWeight: "500",
-      boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-    }}>
-      {icon} {text}
-    </Link>
+        <div className="teacher-card-row">
+          {statCards.map((card, idx) => {
+            const colors = getStatusColor(card.status);
+            return (
+              <motion.div
+                key={card.id}
+                className="teacher-card-wrap"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: idx * 0.05 }}
+              >
+                <Link to={card.link} className="teacher-exam-card">
+                  <div className="teacher-exam-top">
+                    <span className="teacher-chip" style={{ backgroundColor: colors.bg, color: colors.text }}>
+                      {card.status.toUpperCase()}
+                    </span>
+                    <LayoutDashboard size={17} color="#6b7481" />
+                  </div>
+
+                  <h3 className="teacher-exam-title">{card.title}</h3>
+                  <p className="teacher-meta">{card.meta}</p>
+                  <p className="teacher-meta teacher-meta-soft">Current count: {card.value}</p>
+
+                  <div className="teacher-card-action primary">
+                    <ChevronRight size={14} /> Open
+                  </div>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      <motion.div
+        className="teacher-subject"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1 }}
+      >
+        <div className="teacher-subject-head">
+          <h2 className="teacher-subject-title">Quick Management</h2>
+          <span className="teacher-view-all">Shortcuts</span>
+        </div>
+
+        <div className="teacher-card-row">
+          {quickActions.map((item, idx) => (
+            <motion.div
+              key={item.id}
+              className="teacher-card-wrap"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: idx * 0.05 }}
+            >
+              <Link to={item.link} className="teacher-exam-card">
+                <div className="teacher-exam-top">
+                  <span className="teacher-chip" style={{ backgroundColor: "#eef0f3", color: "#5a6675" }}>
+                    ACTION
+                  </span>
+                  {item.icon}
+                </div>
+
+                <h3 className="teacher-exam-title">{item.title}</h3>
+                <p className="teacher-meta">Navigate to {item.title.toLowerCase()}.</p>
+                <p className="teacher-meta teacher-meta-soft">Administrative tools</p>
+
+                <div className="teacher-card-action ghost">
+                  <ChevronRight size={14} /> Open Panel
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </section>
   );
 }
