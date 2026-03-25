@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Ban, Pencil, Search, UserPlus } from "lucide-react";
 
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState("teacher");
@@ -8,12 +9,10 @@ export default function UserManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "", // Optional: If Firebase auth creates it
-    role: "teacher"
+    role: "teacher",
   });
 
   useEffect(() => {
@@ -23,9 +22,11 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users?role=${activeTab}&search=${search}`);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/users?role=${activeTab}&search=${search}`
+      );
       const data = await res.json();
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
     } finally {
@@ -39,12 +40,15 @@ export default function UserManagement() {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Add name if backend mapped it to displayName
-        body: JSON.stringify({ email: formData.email, role: formData.role, displayName: formData.name }) 
+        body: JSON.stringify({
+          email: formData.email,
+          role: formData.role,
+          displayName: formData.name,
+        }),
       });
       if (res.ok) {
         setIsModalOpen(false);
-        setFormData({ name: "", email: "", password: "", role: activeTab });
+        setFormData({ name: "", email: "", role: activeTab });
         fetchUsers();
       } else {
         const error = await res.json();
@@ -56,7 +60,7 @@ export default function UserManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${id}`, { method: "DELETE" });
       if (res.ok) fetchUsers();
@@ -65,106 +69,312 @@ export default function UserManagement() {
     }
   };
 
+  const roleTabs = ["teacher", "student", "admin"];
+
+  const summary = useMemo(
+    () => ({
+      total: users.length,
+      active: users.filter((u) => u.isActive !== false).length,
+    }),
+    [users]
+  );
+
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-        <h1 style={{ margin: 0, fontSize: "28px", color: "#1e293b" }}>User Management</h1>
-        <button 
-          onClick={() => { setFormData({ ...formData, role: activeTab }); setIsModalOpen(true); }}
-          style={{ backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}
+    <section style={{ display: "grid", gap: 16 }}>
+      <motion.header
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}
+      >
+        <div>
+          <h1 style={{ margin: 0, fontSize: 36, lineHeight: 1.1, color: "#232b37" }}>User Management</h1>
+          <p style={{ margin: "8px 0 0", color: "var(--muted)", fontSize: 13 }}>
+            Oversee and manage institutional access for all academic staff and students.
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            setFormData((prev) => ({ ...prev, role: activeTab }));
+            setIsModalOpen(true);
+          }}
+          style={{
+            border: "none",
+            background: "var(--accent-strong)",
+            color: "#fff",
+            borderRadius: 999,
+            padding: "10px 16px",
+            fontWeight: 700,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+            boxShadow: "0 10px 20px rgba(46, 86, 190, 0.24)",
+          }}
         >
-          + Add User
+          <UserPlus size={16} /> Add User
         </button>
+      </motion.header>
+
+      <div
+        style={{
+          border: "1px solid var(--line)",
+          borderRadius: 16,
+          background: "#f6eeea",
+          padding: 10,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "inline-flex", gap: 6, background: "#efe6e1", borderRadius: 999, padding: 4 }}>
+          {roleTabs.map((role) => (
+            <button
+              key={role}
+              onClick={() => setActiveTab(role)}
+              style={{
+                border: 0,
+                cursor: "pointer",
+                borderRadius: 999,
+                padding: "7px 14px",
+                textTransform: "capitalize",
+                fontWeight: 700,
+                fontSize: 12,
+                color: activeTab === role ? "#1f2a36" : "#6f7784",
+                background: activeTab === role ? "#fff" : "transparent",
+              }}
+            >
+              {role}s
+            </button>
+          ))}
+        </div>
+
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            border: "1px solid #dadfe6",
+            borderRadius: 999,
+            background: "#fff",
+            height: 36,
+            padding: "0 12px",
+            minWidth: 260,
+          }}
+        >
+          <Search size={15} color="#7a8491" />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ border: 0, outline: "none", width: "100%", fontSize: 13, background: "transparent" }}
+          />
+        </label>
       </div>
 
-      <div style={{ display: "flex", gap: "16px", marginBottom: "20px", borderBottom: "1px solid #e2e8f0" }}>
-        {["teacher", "student", "admin"].map(role => (
-          <button
-            key={role}
-            onClick={() => setActiveTab(role)}
-            style={{
-              background: "none",
-              border: "none",
-              padding: "12px 16px",
-              cursor: "pointer",
-              fontSize: "16px",
-              textTransform: "capitalize",
-              color: activeTab === role ? "#3b82f6" : "#64748b",
-              borderBottom: activeTab === role ? "2px solid #3b82f6" : "2px solid transparent",
-              fontWeight: activeTab === role ? "600" : "400"
-            }}
-          >
-            {role}s
-          </button>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", marginBottom: "20px", backgroundColor: "#fff", padding: "8px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", width: "300px" }}>
-        <Search size={18} color="#94a3b8" />
-        <input 
-          type="text" 
-          placeholder="Search by name or email..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ border: "none", outline: "none", marginLeft: "8px", width: "100%", fontSize: "14px" }}
-        />
-      </div>
-
-      <div style={{ backgroundColor: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24 }}
+        style={{ border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden", background: "#fff" }}
+      >
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-          <thead style={{ backgroundColor: "#f8fafc", color: "#475569", fontSize: "14px", borderBottom: "1px solid #e2e8f0" }}>
+          <thead style={{ background: "#efe3db", color: "#677281", fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase" }}>
             <tr>
-              <th style={{ padding: "12px 16px", fontWeight: "600" }}>Name</th>
-              <th style={{ padding: "12px 16px", fontWeight: "600" }}>Email</th>
-              <th style={{ padding: "12px 16px", fontWeight: "600" }}>Role</th>
-              <th style={{ padding: "12px 16px", fontWeight: "600", textAlign: "right" }}>Actions</th>
+              <th style={{ padding: "12px 14px" }}>Name</th>
+              <th style={{ padding: "12px 14px" }}>Email Address</th>
+              <th style={{ padding: "12px 14px" }}>Department / Role</th>
+              <th style={{ padding: "12px 14px" }}>Status</th>
+              <th style={{ padding: "12px 14px", textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="4" style={{ padding: "16px", textAlign: "center" }}>Loading...</td></tr>
+              <tr>
+                <td colSpan="5" style={{ padding: 18, textAlign: "center", color: "var(--muted)" }}>
+                  Loading users...
+                </td>
+              </tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan="4" style={{ padding: "16px", textAlign: "center", color: "#64748b" }}>No users found.</td></tr>
+              <tr>
+                <td colSpan="5" style={{ padding: 18, textAlign: "center", color: "var(--muted)" }}>
+                  No users found.
+                </td>
+              </tr>
             ) : (
-              users.map(u => (
-                <tr key={u._id} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                  <td style={{ padding: "12px 16px" }}>{u.displayName || "N/A"}</td>
-                  <td style={{ padding: "12px 16px" }}>{u.email}</td>
-                  <td style={{ padding: "12px 16px", textTransform: "capitalize" }}>{u.role}</td>
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    <button style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", marginRight: "12px" }}>Edit</button>
-                    <button onClick={() => handleDelete(u._id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer" }}>Delete</button>
-                  </td>
-                </tr>
-              ))
+              users.map((u) => {
+                const active = u.isActive !== false;
+                const initials = (u.displayName || u.email || "U")
+                  .split(" ")
+                  .map((s) => s[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
+                return (
+                  <tr key={u._id} style={{ borderTop: "1px solid #f0f2f5" }}>
+                    <td style={{ padding: "13px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 999,
+                            background: "#f2e2d8",
+                            color: "#98521b",
+                            display: "grid",
+                            placeItems: "center",
+                            fontWeight: 700,
+                            fontSize: 11,
+                          }}
+                        >
+                          {initials}
+                        </span>
+                        <div>
+                          <div style={{ fontWeight: 700, color: "#27303d", fontSize: 13 }}>{u.displayName || "Unnamed"}</div>
+                          <div style={{ color: "#7c8593", fontSize: 11, textTransform: "capitalize" }}>
+                            {u.role}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: "13px 14px", color: "#4f5967", fontSize: 13 }}>{u.email}</td>
+                    <td style={{ padding: "13px 14px" }}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          borderRadius: 999,
+                          background: "#f4e7df",
+                          color: "#734f3e",
+                          padding: "4px 10px",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {u.role}
+                      </span>
+                    </td>
+                    <td style={{ padding: "13px 14px" }}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          borderRadius: 999,
+                          background: active ? "#dff6e8" : "#edf1f6",
+                          color: active ? "#137a43" : "#6b7480",
+                          padding: "4px 10px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <i
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 999,
+                            background: active ? "#22c55e" : "#9ca3af",
+                          }}
+                        />
+                        {active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "13px 14px", textAlign: "right" }}>
+                      <div style={{ display: "inline-flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          title="Edit"
+                          style={{ border: 0, background: "transparent", cursor: "pointer", color: "#5f6b79" }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete"
+                          onClick={() => handleDelete(u._id)}
+                          style={{ border: 0, background: "transparent", cursor: "pointer", color: "#c94949" }}
+                        >
+                          <Ban size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
-      </div>
+
+        <div style={{ borderTop: "1px solid #f0f2f5", padding: "10px 14px", display: "flex", justifyContent: "space-between", color: "#7c8593", fontSize: 11 }}>
+          <span>
+            Showing {users.length} {activeTab} records
+          </span>
+          <span>
+            {summary.active} active / {summary.total} total
+          </span>
+        </div>
+      </motion.div>
 
       {isModalOpen && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-          <div style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "400px" }}>
-            <h2 style={{ margin: "0 0 16px 0", fontSize: "20px" }}>Add {formData.role}</h2>
-            <form onSubmit={handleAddUser} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <input 
-                type="text" placeholder="Name" required
-                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(19, 26, 38, 0.48)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 60,
+            padding: 16,
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ width: "min(420px, 100%)", borderRadius: 16, background: "#fff", border: "1px solid var(--line)", padding: 20 }}
+          >
+            <h2 style={{ margin: "0 0 14px", fontSize: 22, color: "#252d39" }}>Add {formData.role}</h2>
+            <form onSubmit={handleAddUser} style={{ display: "grid", gap: 12 }}>
+              <input
+                type="text"
+                placeholder="Display name"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                style={{ height: 40, borderRadius: 10, border: "1px solid #d7dce4", padding: "0 12px" }}
               />
-              <input 
-                type="email" placeholder="Email" required
-                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+              <input
+                type="email"
+                placeholder="Email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                style={{ height: 40, borderRadius: 10, border: "1px solid #d7dce4", padding: "0 12px" }}
               />
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: "6px", background: "none", cursor: "pointer" }}>Cancel</button>
-                <button type="submit" style={{ padding: "8px 16px", border: "none", borderRadius: "6px", background: "#3b82f6", color: "#fff", cursor: "pointer" }}>Save User</button>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  style={{ border: "1px solid #d7dce4", borderRadius: 10, background: "#fff", padding: "8px 13px", cursor: "pointer", fontWeight: 600 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ border: 0, borderRadius: 10, background: "var(--accent-strong)", color: "#fff", padding: "8px 13px", cursor: "pointer", fontWeight: 700 }}
+                >
+                  Save User
+                </button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
