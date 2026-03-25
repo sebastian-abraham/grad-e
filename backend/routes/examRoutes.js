@@ -417,6 +417,21 @@ router.get("/:id/grade-status", async (req, res) => {
 router.put("/:id/submissions/:subId/grade", async (req, res) => {
   try {
     const { score, feedback } = req.body;
+
+    // Validate marks limits
+    if (feedback && Array.isArray(feedback)) {
+      for (const item of feedback) {
+        if (item.pointsAwarded > item.maxPoints) {
+          return res.status(400).json({ error: `Marks for Question ${item.questionNumber} cannot exceed ${item.maxPoints}.` });
+        }
+      }
+    }
+
+    const exam = await Exam.findById(req.params.id);
+    if (exam && score > exam.totalMarks) {
+       return res.status(400).json({ error: `Total score (${score}) cannot exceed exam total marks (${exam.totalMarks}).` });
+    }
+
     const sub = await Submission.findByIdAndUpdate(req.params.subId, { score, feedback }, { new: true });
     
     const safeSub = sub.toObject();

@@ -54,15 +54,27 @@ export default function GradingView() {
 
   const handleScoreChange = (idx, newPoints) => {
     const updated = [...feedback];
-    updated[idx].pointsAwarded = newPoints;
-    if (newPoints === updated[idx].maxPoints) updated[idx].status = "correct";
-    else if (newPoints === 0) updated[idx].status = "incorrect";
+    let validPoints = newPoints;
+    
+    if (validPoints > updated[idx].maxPoints) {
+      validPoints = updated[idx].maxPoints;
+      toast.error(`Marks cannot exceed ${updated[idx].maxPoints} for this question.`);
+    }
+    if (validPoints < 0) validPoints = 0;
+
+    updated[idx].pointsAwarded = validPoints;
+    if (validPoints === updated[idx].maxPoints) updated[idx].status = "correct";
+    else if (validPoints === 0) updated[idx].status = "incorrect";
     else updated[idx].status = "partial";
     setFeedback(updated);
     
     // update total score
     const newTotal = updated.reduce((sum, item) => sum + item.pointsAwarded, 0);
-    setScore(newTotal);
+    if (newTotal > exam.totalMarks) {
+      setScore(exam.totalMarks);
+    } else {
+      setScore(newTotal);
+    }
   };
 
   const handleFeedbackChange = (idx, newText) => {

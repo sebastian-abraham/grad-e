@@ -121,6 +121,12 @@ export default function CreateExam() {
   };
 
   const confirmCriteria = async () => {
+    const totalCriteriaMarks = criteria.reduce((sum, c) => sum + (c.marks || 0), 0);
+    if (totalCriteriaMarks > formData.totalMarks) {
+      toast.error(`Total question marks (${totalCriteriaMarks}) cannot exceed exam limit (${formData.totalMarks}).`);
+      return;
+    }
+
     setLoading(true);
     try {
       await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${examId}`, {
