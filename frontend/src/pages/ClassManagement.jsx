@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Users, FileEdit, Trash2, X, Plus } from "lucide-react";
+import { Users, FileEdit, Trash2, X, Plus, GraduationCap } from "lucide-react";
 
 export default function ClassManagement() {
   const [classes, setClasses] = useState([]);
