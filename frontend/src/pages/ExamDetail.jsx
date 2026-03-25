@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -457,7 +458,7 @@ function SeatingTab({ exam, fetchExam }) {
   const [rows, setRows] = useState(exam.seatingArrangement?.rows || 6);
   const [cols, setCols] = useState(exam.seatingArrangement?.cols || 8);
   const [assignments, setAssignments] = useState(exam.seatingArrangement?.assignments || []);
-  const [classStudents, setClassStudents] = useState([]);
+  const [orderedStudents, setOrderedStudents] = useState([]);
 
   useEffect(() => {
     if (exam.classId?._id) fetchClassStudents();
@@ -466,7 +467,7 @@ function SeatingTab({ exam, fetchExam }) {
   const fetchClassStudents = async () => {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/api/classes/${exam.classId._id}`);
     const data = await res.json();
-    setClassStudents(data.students);
+    setOrderedStudents(data.students);
   };
 
   const handleCellClick = (r, c) => {
@@ -477,7 +478,7 @@ function SeatingTab({ exam, fetchExam }) {
       next.splice(existingIdx, 1);
     } else {
       const assignedIds = new Set(next.map((a) => a.studentId));
-      const unassignedStudent = classStudents.find((s) => !assignedIds.has(s._id));
+      const unassignedStudent = orderedStudents.find((s) => !assignedIds.has(s._id));
       if (!unassignedStudent) {
         toast.error("All class students currently enrolled are assigned to seats.");
         return;
@@ -505,7 +506,7 @@ function SeatingTab({ exam, fetchExam }) {
   };
 
   const randomizeAssignments = () => {
-    const shuffled = [...classStudents].sort(() => Math.random() - 0.5);
+    const shuffled = [...orderedStudents].sort(() => Math.random() - 0.5);
     const next = [];
     let pointer = 0;
 
@@ -519,6 +520,14 @@ function SeatingTab({ exam, fetchExam }) {
     }
 
     setAssignments(next);
+  };
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const items = Array.from(orderedStudents);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    setOrderedStudents(items);
   };
 
   const assignedCount = assignments.length;
@@ -538,6 +547,8 @@ function SeatingTab({ exam, fetchExam }) {
     }
     return risky;
   }, [assignments]);
+
+  const assignedIds = new Set(assignments.map((a) => a.studentId));
 
   return (
     <div style={{ ...panel, padding: 16 }}>
@@ -585,79 +596,157 @@ function SeatingTab({ exam, fetchExam }) {
         <LegendDot label="Proximity Risk" color="rgba(62, 101, 204, 0.32)" border="1px solid var(--accent-strong)" />
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22 }}
-        style={{
-          border: "1px solid var(--line)",
-          borderRadius: 14,
-          background: "#f8fafc",
-          padding: 14,
-          overflowX: "auto",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            gap: 8,
-            minWidth: `${cols * 56}px`,
-          }}
-        >
-          {Array.from({ length: rows }).flatMap((_, r) =>
-            Array.from({ length: cols }).map((__, c) => {
-              const assigned = assignments.find((a) => a.row === r && a.col === c);
-              const cellKey = `${r}-${c}`;
-              const risky = riskCells.has(cellKey);
-
-              return (
-                <motion.button
-                  key={cellKey}
-                  type="button"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleCellClick(r, c)}
-                  title={`Desk R-${r + 1}-${c + 1}`}
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
+        {/* Left Side: Sidebar Student Queue */}
+        <div style={{ width: "260px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>Allocation Queue</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>Drag to re-order the queue. Click empty grid cells to assign the top unassigned student.</div>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="roster">
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
                   style={{
-                    height: 48,
-                    borderRadius: 10,
-                    border: assigned
-                      ? risky
-                        ? "1px solid var(--accent-strong)"
-                        : "1px solid rgba(62, 101, 204, 0.36)"
-                      : "1px dashed #d2d8e0",
-                    background: assigned
-                      ? risky
-                        ? "rgba(62, 101, 204, 0.32)"
-                        : "rgba(62, 101, 204, 0.16)"
-                      : "#fff",
-                    color: assigned ? "var(--accent-strong)" : "#a0aabc",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
+                    flex: 1,
+                    background: "#f8fafc",
+                    border: "1px solid var(--line)",
+                    borderRadius: 12,
+                    padding: "8px",
+                    maxHeight: "450px",
+                    overflowY: "auto",
                   }}
                 >
-                  {assigned ? "👤" : "＋"}
-                </motion.button>
-              );
-            })
-          )}
+                  {orderedStudents.map((student, index) => {
+                    const isAssigned = assignedIds.has(student._id);
+                    return (
+                      <Draggable key={student._id} draggableId={student._id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            style={{
+                              padding: "8px 12px",
+                              marginBottom: 8,
+                              backgroundColor: isAssigned ? "#f1f5f9" : "#fff",
+                              border: isAssigned ? "1px solid transparent" : "1px solid #cbd5e1",
+                              borderRadius: 8,
+                              opacity: isAssigned ? 0.5 : snapshot.isDragging ? 0.9 : 1,
+                              color: "var(--ink)",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              boxShadow: snapshot.isDragging ? "0 4px 12px rgba(0,0,0,0.1)" : "0 1px 2px rgba(0,0,0,0.05)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              ...provided.draggableProps.style,
+                            }}
+                          >
+                            <span style={{ color: "var(--muted)", fontSize: 11, width: 20 }}>{index + 1}.</span>
+                            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {student.displayName || student.email}
+                            </span>
+                            {isAssigned && <CheckCircle2 size={14} color="#10b981" style={{ marginLeft: "auto", flexShrink: 0 }} />}
+                          </div>
+                        )}
+                      </Draggable>
+                    );
+                  })}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </div>
 
-        <div
+        {/* Right Side: Grid Selection */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22 }}
           style={{
-            marginTop: 14,
-            textAlign: "center",
-            fontSize: 11,
-            letterSpacing: "0.18em",
-            color: "#8a95a3",
-            textTransform: "uppercase",
+            flex: 1,
+            border: "1px solid var(--line)",
+            borderRadius: 14,
+            background: "#f8fafc",
+            padding: 14,
+            overflowX: "auto",
           }}
         >
-          Examination Front / Proctor Desk
-        </div>
-      </motion.div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${cols}, 1fr)`,
+              gap: 8,
+              minWidth: `${cols * 56}px`,
+            }}
+          >
+            {Array.from({ length: rows }).flatMap((_, r) =>
+              Array.from({ length: cols }).map((__, c) => {
+                const assigned = assignments.find((a) => a.row === r && a.col === c);
+                const cellKey = `${r}-${c}`;
+                const risky = riskCells.has(cellKey);
+
+                return (
+                  <motion.button
+                    key={cellKey}
+                    type="button"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleCellClick(r, c)}
+                    title={assigned ? (assigned.studentDetails?.displayName || assigned.studentDetails?.email) : `Desk R-${r + 1}-${c + 1}`}
+                    style={{
+                      minHeight: 52,
+                      borderRadius: 10,
+                      border: assigned
+                        ? risky
+                          ? "1px solid var(--accent-strong)"
+                          : "1px solid rgba(62, 101, 204, 0.36)"
+                        : "1px dashed #d2d8e0",
+                      background: assigned
+                        ? risky
+                          ? "rgba(62, 101, 204, 0.32)"
+                          : "rgba(62, 101, 204, 0.16)"
+                        : "#fff",
+                      color: assigned ? "var(--accent-strong)" : "#a0aabc",
+                      cursor: "pointer",
+                      padding: 4,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                  >
+                    {assigned ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                        <span style={{ fontSize: 14 }}>👤</span>
+                        <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 700, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center", display: "inline-block", padding: "0 2px" }}>
+                          {assigned.studentDetails?.displayName?.split(" ")[0] || "Student"}
+                        </span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 16, fontWeight: 700 }}>＋</span>
+                    )}
+                  </motion.button>
+                );
+              })
+            )}
+          </div>
+
+          <div
+            style={{
+              marginTop: 14,
+              textAlign: "center",
+              fontSize: 11,
+              letterSpacing: "0.18em",
+              color: "#8a95a3",
+              textTransform: "uppercase",
+            }}
+          >
+            Examination Front / Proctor Desk
+          </div>
+        </motion.div>
+      </div>
 
       <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 13, color: "#5a6676" }}>
         <span>Total Capacity: {totalDesks} Desks</span>
