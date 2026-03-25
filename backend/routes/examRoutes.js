@@ -46,7 +46,11 @@ router.get("/:id", async (req, res) => {
     const exam = await Exam.findById(req.params.id)
       .populate("subjectId", "name")
       .populate("classId", "name")
-      .populate("teacherId", "displayName email");
+      .populate("teacherId", "displayName email")
+      .populate({
+        path: "seatingArrangement.assignments.studentId",
+        select: "displayName email"
+      });
     if (!exam) return res.status(404).json({ error: "Exam not found" });
     return res.json(exam);
   } catch (error) {

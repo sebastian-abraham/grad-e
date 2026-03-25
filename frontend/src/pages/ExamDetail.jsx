@@ -462,6 +462,9 @@ function SeatingTab({ exam, fetchExam }) {
 
   useEffect(() => {
     if (exam.classId?._id) fetchClassStudents();
+    setRows(exam.seatingArrangement?.rows || 6);
+    setCols(exam.seatingArrangement?.cols || 8);
+    setAssignments(exam.seatingArrangement?.assignments || []);
   }, [exam]);
 
   const fetchClassStudents = async () => {
@@ -477,7 +480,7 @@ function SeatingTab({ exam, fetchExam }) {
     if (existingIdx !== -1) {
       next.splice(existingIdx, 1);
     } else {
-      const assignedIds = new Set(next.map((a) => a.studentId));
+      const assignedIds = new Set(next.map((a) => a.studentId?._id || a.studentId));
       const unassignedStudent = orderedStudents.find((s) => !assignedIds.has(s._id));
       if (!unassignedStudent) {
         toast.error("All class students currently enrolled are assigned to seats.");
@@ -491,10 +494,16 @@ function SeatingTab({ exam, fetchExam }) {
 
   const saveSeating = async () => {
     try {
+      const cleanAssignments = assignments.map(a => ({
+        row: a.row,
+        col: a.col,
+        studentId: a.studentId?._id || a.studentId
+      }));
+
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seatingArrangement: { rows, cols, assignments } }),
+        body: JSON.stringify({ seatingArrangement: { rows, cols, assignments: cleanAssignments } }),
       });
       if (res.ok) {
         toast.success("Seating layout saved!");
@@ -548,7 +557,7 @@ function SeatingTab({ exam, fetchExam }) {
     return risky;
   }, [assignments]);
 
-  const assignedIds = new Set(assignments.map((a) => a.studentId));
+  const assignedIds = new Set(assignments.map((a) => a.studentId?._id || a.studentId));
 
   return (
     <div style={{ ...panel, padding: 16 }}>
@@ -695,7 +704,7 @@ function SeatingTab({ exam, fetchExam }) {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleCellClick(r, c)}
-                    title={assigned ? (assigned.studentDetails?.displayName || assigned.studentDetails?.email) : `Desk R-${r + 1}-${c + 1}`}
+                    title={assigned ? (assigned.studentDetails?.displayName || assigned.studentId?.displayName || assigned.studentDetails?.email || assigned.studentId?.email) : `Desk R-${r + 1}-${c + 1}`}
                     style={{
                       minHeight: 52,
                       borderRadius: 10,
@@ -721,7 +730,7 @@ function SeatingTab({ exam, fetchExam }) {
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                         <span style={{ fontSize: 14 }}>👤</span>
                         <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 700, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center", display: "inline-block", padding: "0 2px" }}>
-                          {assigned.studentDetails?.displayName?.split(" ")[0] || "Student"}
+                          {(assigned.studentDetails?.displayName || assigned.studentId?.displayName || "Student").split(" ")[0]}
                         </span>
                       </div>
                     ) : (
