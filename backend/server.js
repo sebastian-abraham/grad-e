@@ -1,10 +1,10 @@
-// Basic Express.js server boilerplate
-
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
+const path = require("path"); // ✅ ADDED
 const connectDB = require("./config/db");
+
 const userRoutes = require("./routes/userRoutes");
 const classRoutes = require("./routes/classRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
@@ -13,6 +13,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const examRoutes = require("./routes/examRoutes");
 const teacherRoutes = require("./routes/teacherRoutes");
 const studentRoutes = require("./routes/studentRoutes");
+const scanRoutes = require("./routes/scanRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,6 +24,9 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// ✅ SERVE SCANNER IMAGES (VERY IMPORTANT)
+app.use("/temp", express.static(path.join(__dirname, "../../scanner/temp")));
+
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/classes", classRoutes);
@@ -32,7 +36,9 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/student", studentRoutes);
+app.use("/api/scans", scanRoutes);
 
+// Existing upload config (unchanged)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 },
@@ -45,6 +51,7 @@ const upload = multer({
   },
 });
 
+// JSON extractor (unchanged)
 const extractJson = (text) => {
   if (!text) return null;
   const start = text.indexOf("{");
@@ -58,10 +65,12 @@ const extractJson = (text) => {
   }
 };
 
+// Health route
 app.get("/", (req, res) => {
   res.send("Server is running!");
 });
 
+// AI grading route (unchanged)
 app.post("/api/grade", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -138,6 +147,7 @@ Return strictly valid JSON with double quotes and no markdown or extra commentar
     const rawText = (responseJson.candidates?.[0]?.content?.parts || [])
       .map((part) => part.text || "")
       .join("");
+
     const parsed = extractJson(rawText);
 
     if (!parsed) {
@@ -161,6 +171,7 @@ Return strictly valid JSON with double quotes and no markdown or extra commentar
   }
 });
 
+// Error handler
 app.use((error, req, res, next) => {
   if (error) {
     return res.status(400).json({ error: error.message || "Upload failed." });
