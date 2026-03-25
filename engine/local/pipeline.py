@@ -1,146 +1,110 @@
-import ollama
+import os
+import glob
 import json
+import uuid
+from .indexer import LocalColPaliIndexer
+from .vlm_grader import LocalOllamaGrader 
 
-from .prompts import LOCAL_MANAGER_PROMPT, LOCAL_TEXT_PROMPT, LOCAL_MATH_PROMPT, LOCAL_DIAGRAM_PROMPT
-
-class LocalOllamaGrader:
+class LocalPipelineManager:
     def __init__(self):
-        self.model_name = "qwen3-vl:8b" 
+        self.inputs_dir = "engine/storage/local/inputs"
+        self.crops_dir = "engine/storage/local/crops"
+        self.reports_dir = "engine/storage/local/reports"
 
-    def _extract_json(self, text):
-        try:
-            clean_json = text[text.find("{"):text.rfind("}")+1]
-            return json.loads(clean_json)
-        except (json.JSONDecodeError, ValueError):
-            return None
-
-    def evaluate_answer(self, q_data, q_img_path, key_img_path, student_img_paths):
-        # 1. SAFE GETTERS 
-        q_id = str(q_data.get("id", q_data.get("question_id", "")))
-        max_pts = float(q_data.get("max_points", q_data.get("maximum_marks", 0)))
-        q_text = q_data.get("context", q_data.get("question_text", ""))
+    def run_pipeline(self, questions_list, student_pdfs=None):
+        run_id = uuid.uuid4().hex[:6]  # Generates unique ID to prevent Byaldi crashes
 
         # ==========================================
-        # MODE A: COMPARATIVE GRADING (KEY EXISTS)
+        # PHASE 1: BATCH EXTRACTION (COLPALI)
         # ==========================================
-        if key_img_path is not None:
-            print(f"\n👔 [MANAGER] Analyzing Q{q_id} (Max Points: {max_pts}) via Ollama...")
+        print("\n🚀 [PHASE 1] Starting Batch Extraction Pipeline...")
+        indexer = LocalColPaliIndexer(storage_dir=self.crops_dir)
+        indexer.load_model() 
 
-            manager_messages = [
-                {"role": "system", "content": LOCAL_MANAGER_PROMPT},
-                {
-                    "role": "user", 
-                    "content": f"Image 1 is the Question. Image 2 is the Answer Key. Allocate the {max_pts} points to the required agents (text, math, diagram).",
-                    "images": [q_img_path, key_img_path] 
-                }
-            ]
+        print("--> Processing Golden Standard...")
+        qp_path = f"{self.inputs_dir}/question_paper.pdf"
+        idx_qp_name = f"idx_qp_{run_id}"
+        indexer.create_index(qp_path, idx_qp_name)
+        
+        ak_path = f"{self.inputs_dir}/answer_key.pdf"
+        idx_key_name = f"idx_key_{run_id}"
+        if os.path.exists(ak_path):
+            indexer.create_index(ak_path, idx_key_name)
+
+        for q in questions_list:
+            q_id = str(q.get("id", q.get("question_id", "")))
+            q_text = q.get("context", q.get("question_text", ""))
             
-            manager_response = ollama.chat(
-                model=self.model_name, 
-                messages=manager_messages,
-                format="json", 
-                keep_alive="5m" 
-            )
+            indexer.extract_crop(idx_qp_name, q_text, f"golden/q_{q_id}_question", k=1)
+            if os.path.exists(ak_path):
+                indexer.extract_crop(idx_key_name, f"Solution for {q_text}", f"golden/q_{q_id}_key", k=1)
+
+        if not student_pdfs:
+            student_pdfs = glob.glob(f"{self.inputs_dir}/students/*.pdf")
+        
+        print(f"--> Processing {len(student_pdfs)} student scripts...")
+        for pdf_path in student_pdfs:
+            print("🔄 Cycling VRAM for fresh index...")
+            indexer.unload_model()
+            del indexer
+            indexer = LocalColPaliIndexer(storage_dir=self.crops_dir)
+            indexer.load_model()
             
-            routing_plan = self._extract_json(manager_response['message']['content'])
-
-            if not routing_plan or "agents" not in routing_plan:
-                print("⚠️ [MANAGER ERROR] Defaulting to Math Agent.")
-                routing_plan = {"agents": [{"type": "math", "points": max_pts}]}
-
-            final_score = 0.0
-            combined_feedback = []
-
-            prompt_map = {
-                "text": LOCAL_TEXT_PROMPT,
-                "math": LOCAL_MATH_PROMPT,
-                "diagram": LOCAL_DIAGRAM_PROMPT
-            }
-
-            total_agents = len(routing_plan["agents"])
+            student_id = os.path.basename(pdf_path).replace('.pdf', '')
+            idx_student_name = f"idx_{student_id}_{run_id}"
             
-            for idx, task in enumerate(routing_plan["agents"]):
-                agent_type = task["type"]
-                allocated_pts = task["points"]
-                
-                print(f"  --> 🕵️‍♂️ [{agent_type.upper()} AGENT] Evaluating student crop(s) for {allocated_pts} points...")
-                
-                specialist_messages = [
-                    {"role": "system", "content": prompt_map.get(agent_type, LOCAL_TEXT_PROMPT)},
-                    {
-                        "role": "user", 
-                        "content": f"Image 1 is the Reference Key. All subsequent images are the Student's Answer. Grade the {agent_type} aspects out of {allocated_pts} points.",
-                        "images": [key_img_path] + student_img_paths
-                    }
-                ]
-                
-                keep_model_alive = "5m" if idx < (total_agents - 1) else 0
+            indexer.create_index(pdf_path, idx_student_name)
+            
+            for q in questions_list:
+                q_id = str(q.get("id", q.get("question_id", "")))
+                q_text = q.get("context", q.get("question_text", ""))
+                search_query = f"Student's handwritten answer for Question {q_id}: {q_text}"
+                indexer.extract_crop(idx_student_name, search_query, f"students/{student_id}_q_{q_id}", k=2)
 
-                agent_response = ollama.chat(
-                    model=self.model_name, 
-                    messages=specialist_messages,
-                    format="json",
-                    keep_alive=keep_model_alive 
-                )
-                
-                agent_data = self._extract_json(agent_response['message']['content'])
-                
-                if agent_data:
-                    # FIX 1: Extract 'points' instead of 'awarded_marks'
-                    final_score += agent_data.get("points", 0)
-                    combined_feedback.append(f"[{agent_type.upper()}]: {agent_data.get('feedback', '')}")
-
-            return {
-                "id": q_id,  
-                "points": min(final_score, max_pts),  
-                "status": "correct" if final_score >= (max_pts * 0.9) else "partial",
-                "feedback": " | ".join(combined_feedback),
-                "correctAnswer": agent_data.get("correctAnswer", ""), 
-                "studentAnswer": agent_data.get("studentAnswer", "")  
-            }
+        indexer.unload_model()
+        print("✅ [PHASE 1 COMPLETE] ColPali unloaded. VRAM cleared.")
 
         # ==========================================
-        # MODE B: ZERO-SHOT AUTONOMOUS (NO KEY)
+        # PHASE 2: BATCH GRADING (QWEN / LLAMA)
         # ==========================================
-        else:
-            print(f"\n🧠 [AUTONOMOUS MODE] Deriving answer for Q{q_id} from scratch...")
+        print("\n🚀 [PHASE 2] Starting Batch Grading Pipeline...")
+        grader = LocalOllamaGrader() 
+
+        for pdf_path in student_pdfs:
+            student_id = os.path.basename(pdf_path).replace('.pdf', '')
             
-            # FIX 2: Updated prompt to explicitly request the new JSON schema keys
-            system_prompt = f"""You are an expert university professor grading an exam. 
-            No official answer key is provided. You must use your own expert knowledge to solve the following question from scratch, then grade the student's handwritten answer based on your derivation.
-            The question is: '{q_text}'
-            Maximum points: {max_pts}.
-            Carefully check the student's methodology and calculations. 
-            Return ONLY a valid JSON object with keys: 'points' (float), 'status' (string: correct/partial/incorrect), 'studentAnswer' (string), 'correctAnswer' (string), and 'feedback' (string)."""
-            
-            autonomous_messages = [
-                {"role": "user", "content": system_prompt, "images": [q_img_path] + student_img_paths}
-            ]
-            
-            try:
-                agent_response = ollama.chat(
-                    model=self.model_name, 
-                    messages=autonomous_messages,
-                    format="json",
-                    keep_alive=0 
-                )
+            # FIXED: Initialized with "questions" to match Cloud parity
+            student_report = {"student_id": student_id, "score": 0, "total": 0, "questions": []}
+
+            for q in questions_list:
+                q_id = str(q.get("id", q.get("question_id", "")))
+                max_pts = float(q.get("max_points", q.get("maximum_marks", 0)))
                 
-                agent_data = self._extract_json(agent_response['message']['content'])
+                student_report["total"] += max_pts
                 
-                if agent_data:
-                    # FIX 3: Get 'points' instead of 'awarded_marks'
-                    score = agent_data.get("points", 0)
+                q_img = f"{self.crops_dir}/golden/q_{q_id}_question_part1.png"
+                k_img = f"{self.crops_dir}/golden/q_{q_id}_key_part1.png"
+                s_imgs = sorted(glob.glob(f"{self.crops_dir}/students/{student_id}_q_{q_id}_part*.png"))
+
+                if s_imgs:
+                    actual_key = k_img if os.path.exists(k_img) else None
                     
-                    # FIX 4: Use 'score' and 'agent_data' instead of undefined variables
-                    return {
-                        "id": q_id,
-                        "points": min(score, max_pts),
-                        "status": "correct" if score >= (max_pts * 0.9) else "partial",
-                        "feedback": f"[AUTONOMOUS]: {agent_data.get('feedback', '')}",
-                        "correctAnswer": agent_data.get("correctAnswer", ""),
-                        "studentAnswer": agent_data.get("studentAnswer", "")
-                    }
-            except Exception as e:
-                print(f"❌ Autonomous Grader Error on Q{q_id}: {e}")
-                
-            return None
+                    if not actual_key:
+                        print(f"⚠️ No answer key found for Q{q_id}. Initiating Zero-Shot Autonomous Grading...")
+                        
+                    grade_data = grader.evaluate_answer(q, q_img, actual_key, s_imgs)
+                    
+                    if grade_data:
+                        # FIXED: Appending to "questions" and grabbing "points"
+                        student_report["questions"].append(grade_data)
+                        student_report["score"] += grade_data.get("points", 0)
+
+            # FIXED: Added the final formatting math to perfectly match Cloud engine
+            student_report["score"] = round(student_report["score"] * 2) / 2
+            student_report["points"] = f"{student_report['score']}/{student_report['total']}"
+            student_report["score"] = min(student_report["score"], student_report["total"])
+
+            report_path = f"{self.reports_dir}/{student_id}_report.json"
+            with open(report_path, "w") as f:
+                json.dump(student_report, f, indent=4)
+            print(f"💾 Saved report to {report_path}")

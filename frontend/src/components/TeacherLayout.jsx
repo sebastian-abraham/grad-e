@@ -23,7 +23,7 @@ export default function TeacherLayout() {
   const navItems = useMemo(
     () => [
       { name: "Dashboard", path: "/teacher", icon: <LayoutDashboard size={18} /> },
-      { name: "New Exam", path: "/teacher/create-exam", icon: <PlusCircle size={18} /> },
+      //{ name: "New Exam", path: "/teacher/create-exam", icon: <PlusCircle size={18} /> },
     ],
     []
   );
