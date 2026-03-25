@@ -2,6 +2,8 @@
 # Secrets & Environment
 # =========================
 .env
+.env.*
+!.env.example
 
 # =========================
 # Python & Virtual Env
@@ -12,23 +14,28 @@ __pycache__/
 .venv/
 venv/
 ENV/
+build/
+dist/
 
 # =========================
 # grad-e Dynamic Storage Files
 # =========================
-# Ignore all dynamic files and subfolders generated during runtime
-engine/storage/crops/*
-engine/storage/inputs/*
-engine/storage/local/temp_qp_pages/*
-engine/storage/reports/*
-engine/storage/uploads/*
+# Ignore all dynamically generated inputs, crops, and reports
+engine/storage/crops/
+engine/storage/inputs/
+engine/storage/reports/
+engine/storage/local/
 
-# Exception: Keep .gitkeep files so the empty directories are tracked by Git
+# Specifically ignore the Byaldi index folder and temporary local assets
+.byaldi/
+engine/storage/local/temp_qp_pages/
+
+# Exception: Keep .gitkeep files to ensure empty directory structure is tracked
 !engine/storage/crops/.gitkeep
 !engine/storage/inputs/.gitkeep
-!engine/storage/local/temp_qp_pages/.gitkeep
 !engine/storage/reports/.gitkeep
-!engine/storage/uploads/.gitkeep
+!engine/storage/local/.gitkeep
+!engine/storage/local/temp_qp_pages/.gitkeep
 
 # =========================
 # IDE & OS Specific
@@ -37,3 +44,4 @@ engine/storage/uploads/*
 .idea/
 .DS_Store
 Thumbs.db
+*.log
