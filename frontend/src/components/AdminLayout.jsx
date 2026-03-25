@@ -1,11 +1,60 @@
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Users, BookOpen, GraduationCap, LayoutDashboard, LogOut, ClipboardList } from "lucide-react";
+import { Users, BookOpen, GraduationCap, LayoutDashboard, LogOut, ClipboardList, Menu, X, Bell, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminLayout() {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setProfileOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setProfileOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setProfileOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  const getInitials = () => {
+    const name = currentUser?.displayName?.trim();
+    if (name) {
+      return name
+        .split(" ")
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join("");
+    }
+
+    if (currentUser?.email) {
+      return currentUser.email.slice(0, 2).toUpperCase();
+    }
+
+    return "AD";
+  };
 
   const handleLogout = async () => {
     try {
@@ -16,74 +65,117 @@ export default function AdminLayout() {
     }
   };
 
-  const navItems = [
-    { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={20} /> },
-    { name: "Users", path: "/admin/users", icon: <Users size={20} /> },
-    { name: "Classes", path: "/admin/classes", icon: <GraduationCap size={20} /> },
-    { name: "Subjects", path: "/admin/subjects", icon: <BookOpen size={20} /> },
-    { name: "Assignments", path: "/admin/assignments", icon: <ClipboardList size={20} /> },
-  ];
+  const navItems = useMemo(
+    () => [
+      { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={18} /> },
+      { name: "Users", path: "/admin/users", icon: <Users size={18} /> },
+      { name: "Classes", path: "/admin/classes", icon: <GraduationCap size={18} /> },
+      { name: "Subjects", path: "/admin/subjects", icon: <BookOpen size={18} /> },
+      { name: "Assignments", path: "/admin/assignments", icon: <ClipboardList size={18} /> },
+    ],
+    []
+  );
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#f3f4f6", fontFamily: "system-ui, sans-serif" }}>
-      {/* Sidebar */}
-      <aside style={{ width: "250px", backgroundColor: "#1e293b", color: "#fff", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "20px", fontSize: "24px", fontWeight: "bold", borderBottom: "1px solid #334155" }}>
-          Grad-E Admin
+    <div className="teacher-shell">
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            className="teacher-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <motion.aside
+        className={`teacher-sidebar ${menuOpen ? "open" : ""}`}
+        initial={{ x: -28, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+      >
+        <div className="teacher-brand">
+          <h1 className="teacher-brand-name">Grade-E Admin</h1>
         </div>
-        
-        <nav style={{ flex: 1, padding: "20px 0" }}>
+
+        <nav className="teacher-nav">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.path !== "/admin" && location.pathname.startsWith(item.path));
+            const isActive =
+              location.pathname === item.path ||
+              (item.path !== "/admin" && location.pathname.startsWith(item.path));
+
             return (
               <Link
                 key={item.name}
                 to={item.path}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "12px 20px",
-                  color: isActive ? "#38bdf8" : "#94a3b8",
-                  textDecoration: "none",
-                  backgroundColor: isActive ? "#0f172a" : "transparent",
-                  transition: "all 0.2s"
-                }}
+                className={`teacher-nav-link ${isActive ? "active" : ""}`}
+                onClick={() => setMenuOpen(false)}
               >
                 {item.icon}
-                <span style={{ fontWeight: isActive ? "600" : "400" }}>{item.name}</span>
+                <span>{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div style={{ padding: "20px", borderTop: "1px solid #334155" }}>
-          <div style={{ marginBottom: "12px", fontSize: "14px", color: "#cbd5e1" }}>
-            {currentUser?.displayName || currentUser?.email}
-          </div>
-          <button
-            onClick={handleLogout}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              width: "100%",
-              padding: "10px",
-              backgroundColor: "transparent",
-              color: "#f87171",
-              border: "1px solid #f87171",
-              borderRadius: "6px",
-              cursor: "pointer",
-              transition: "all 0.2s"
-            }}
-          >
-            <LogOut size={18} /> Logout
-          </button>
-        </div>
-      </aside>
+        <div className="teacher-side-foot" />
+      </motion.aside>
 
-      {/* Main Content */}
-      <main style={{ flex: 1, overflowY: "auto", padding: "32px", display: "flex", flexDirection: "column" }}>
+      <main className="teacher-main">
+        <motion.header
+          className="teacher-topbar"
+          initial={{ y: -16, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.34 }}
+        >
+          <div className="teacher-topbar-left">
+            <button className="teacher-menu-btn" onClick={() => setMenuOpen((prev) => !prev)}>
+              {menuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
+
+          <div className="teacher-topbar-right" ref={profileMenuRef}>
+            <button className="teacher-icon-btn" aria-label="Notifications">
+              <Bell size={17} />
+            </button>
+
+            <button
+              className={`teacher-profile-btn ${profileOpen ? "open" : ""}`}
+              onClick={() => setProfileOpen((prev) => !prev)}
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+            >
+              <span className="teacher-avatar">{getInitials()}</span>
+              <ChevronDown size={16} />
+            </button>
+
+            <AnimatePresence>
+              {profileOpen && (
+                <motion.div
+                  className="teacher-profile-menu"
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
+                  role="menu"
+                >
+                  <div className="teacher-profile-meta">
+                    <p>{currentUser?.displayName || "Admin"}</p>
+                    <small>{currentUser?.email || "No email"}</small>
+                  </div>
+                  <button onClick={handleLogout} className="teacher-profile-logout" role="menuitem">
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.header>
+
         <Outlet />
       </main>
     </div>

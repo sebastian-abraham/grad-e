@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { ArrowLeft, User, GraduationCap } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
+import { ArrowLeft, Search, User } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function ClassDetail() {
   const { id } = useParams();
@@ -9,6 +10,7 @@ export default function ClassDetail() {
   const [unassigned, setUnassigned] = useState([]);
   const [roster, setRoster] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,20 +23,19 @@ export default function ClassDetail() {
       const [clsRes, usersRes, assignRes] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}`),
         fetch(`${import.meta.env.VITE_API_URL}/api/users?role=student`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/assignments`)
+        fetch(`${import.meta.env.VITE_API_URL}/api/assignments`),
       ]);
-      
+
       const classData = await clsRes.json();
       const allStudents = await usersRes.json();
       const allAssignments = await assignRes.json();
 
       setCls(classData);
-      
-      const enrolledStudentIds = classData.students.map(s => s._id);
-      setRoster(classData.students);
-      setUnassigned(allStudents.filter(s => !enrolledStudentIds.includes(s._id)));
-      
-      setAssignments(allAssignments.filter(a => a.classId?._id === id));
+      setRoster(classData.students || []);
+
+      const enrolledIds = new Set((classData.students || []).map((s) => s._id));
+      setUnassigned((allStudents || []).filter((s) => !enrolledIds.has(s._id)));
+      setAssignments((allAssignments || []).filter((a) => a.classId?._id === id));
     } catch (error) {
       console.error(error);
     } finally {
@@ -42,17 +43,17 @@ export default function ClassDetail() {
     }
   };
 
-  const updateRosterOnBackend = async (studentId, listName) => {
+  const updateRosterOnBackend = async (studentId, target) => {
     try {
-      if (listName === "roster") {
+      if (target === "roster") {
         await fetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}/students`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ studentIds: [studentId] })
+          body: JSON.stringify({ studentIds: [studentId] }),
         });
       } else {
         await fetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}/students/${studentId}`, {
-          method: "DELETE"
+          method: "DELETE",
         });
       }
     } catch (error) {
@@ -62,155 +63,209 @@ export default function ClassDetail() {
 
   const onDragEnd = (result) => {
     const { source, destination } = result;
-
     if (!destination) return;
-    if (source.droppableId === destination.droppableId) return; // Order formatting ignored for simplicity
+    if (source.droppableId === destination.droppableId) return;
 
-    const sourceList = source.droppableId === "unassigned" ? unassigned : roster;
-    const destList = destination.droppableId === "unassigned" ? unassigned : roster;
-    const [movedStudent] = sourceList.splice(source.index, 1);
-    
-    destList.splice(destination.index, 0, movedStudent);
+    const src = source.droppableId === "unassigned" ? [...unassigned] : [...roster];
+    const dst = destination.droppableId === "unassigned" ? [...unassigned] : [...roster];
+    const [moved] = src.splice(source.index, 1);
+    dst.splice(destination.index, 0, moved);
 
     if (source.droppableId === "unassigned") {
-      setUnassigned([...sourceList]);
-      setRoster([...destList]);
-      updateRosterOnBackend(movedStudent._id, "roster");
+      setUnassigned(src);
+      setRoster(dst);
+      updateRosterOnBackend(moved._id, "roster");
     } else {
-      setRoster([...sourceList]);
-      setUnassigned([...destList]);
-      updateRosterOnBackend(movedStudent._id, "unassigned");
+      setRoster(src);
+      setUnassigned(dst);
+      updateRosterOnBackend(moved._id, "unassigned");
     }
   };
 
+  const filteredUnassigned = useMemo(
+    () =>
+      unassigned.filter((s) =>
+        `${s.displayName || ""} ${s.email || ""}`.toLowerCase().includes(search.toLowerCase())
+      ),
+    [unassigned, search]
+  );
+
   if (loading || !cls) return <div>Loading class details...</div>;
 
+  const assignedTeacher = assignments[0]?.teacherId;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "24px" }}>
-        <Link to="/admin/classes" style={{ display: "flex", alignItems: "center", color: "#64748b", textDecoration: "none" }}>
-          <ArrowLeft size={20} /> <span style={{ marginLeft: "4px" }}>Back to Classes</span>
+    <section style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#778294" }}>
+        <Link to="/admin/classes" style={{ color: "#778294", textDecoration: "none" }}>
+          Classes
         </Link>
-        <h1 style={{ margin: 0, fontSize: "28px", color: "#1e293b" }}>{cls.name}</h1>
+        <span>›</span>
+        <span>{cls.name}</span>
       </div>
 
-      <div style={{ padding: "20px", backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
-        <h2 style={{ margin: "0 0 16px 0", fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <GraduationCap size={20} /> Assigned Teachers
-        </h2>
-        {assignments.length === 0 ? (
-          <div style={{ color: "#64748b", fontSize: "14px" }}>No teachers assigned to this class yet. Assign them in the Appointments tab.</div>
-        ) : (
-          <ul style={{ margin: 0, paddingLeft: "20px", color: "#334155" }}>
-            {assignments.map(a => (
-              <li key={a._id} style={{ marginBottom: "8px" }}>
-                <strong>{a.teacherId?.displayName || a.teacherId?.email}</strong> &mdash; <em>{a.subjectId?.name}</em>
-              </li>
-            ))}
-          </ul>
-        )}
+      <motion.header
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24 }}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}
+      >
+        <div>
+          <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.06, color: "#232b37" }}>Class: {cls.name}</h1>
+          {assignedTeacher ? (
+            <p style={{ margin: "8px 0 0", color: "#6a7480", fontSize: 13 }}>
+              Assigned Teacher: {assignedTeacher.displayName || assignedTeacher.email}
+            </p>
+          ) : (
+            <p style={{ margin: "8px 0 0", color: "#9b6574", fontSize: 13 }}>
+              No teacher assigned yet.
+            </p>
+          )}
+        </div>
+
+        <div style={{ display: "inline-flex", gap: 8 }}>
+          <button
+            type="button"
+            onClick={fetchData}
+            style={{ border: "1px solid #d7dde6", background: "#fff", borderRadius: 999, padding: "9px 14px", fontWeight: 700, cursor: "pointer" }}
+          >
+            Save Configuration
+          </button>
+          <button
+            type="button"
+            style={{ border: 0, background: "var(--accent-strong)", color: "#fff", borderRadius: 999, padding: "9px 14px", fontWeight: 700, cursor: "pointer" }}
+          >
+            Publish Roster
+          </button>
+        </div>
+      </motion.header>
+
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div
+          style={{
+            border: "1px solid var(--line)",
+            borderRadius: 16,
+            background: "#fff",
+            padding: 14,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 14,
+          }}
+        >
+          <DroppableColumn
+            droppableId="unassigned"
+            title={`Unassigned Pool (${filteredUnassigned.length})`}
+            subtitle="Find and drag students"
+            search={search}
+            onSearch={setSearch}
+            withSearch
+            students={filteredUnassigned}
+            emptyText="No students available in unassigned pool."
+            tone="left"
+          />
+
+          <DroppableColumn
+            droppableId="roster"
+            title={`Class Roster (${roster.length} Students)`}
+            subtitle="Drag students here to enroll"
+            students={roster}
+            emptyText="Drop to assign"
+            tone="right"
+          />
+        </div>
+      </DragDropContext>
+    </section>
+  );
+}
+
+function DroppableColumn({
+  droppableId,
+  title,
+  subtitle,
+  students,
+  emptyText,
+  tone,
+  withSearch,
+  search,
+  onSearch,
+}) {
+  const cardBorder = tone === "right" ? "1px dashed #d8deea" : "1px solid #e8edf4";
+
+  return (
+    <div style={{ border: cardBorder, borderRadius: 14, background: "#f7fafc", padding: 12, minHeight: 460, display: "grid", alignContent: "start", gap: 10 }}>
+      <div style={{ display: "grid", gap: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <h2 style={{ margin: 0, fontSize: 18, color: "#293242" }}>{title}</h2>
+        </div>
+        <p style={{ margin: 0, color: "#7a8491", fontSize: 12 }}>{subtitle}</p>
+
+        {withSearch ? (
+          <label style={{ marginTop: 2, height: 34, borderRadius: 999, border: "1px solid #d8dee8", background: "#fff", display: "inline-flex", alignItems: "center", gap: 6, padding: "0 10px" }}>
+            <Search size={14} color="#8590a0" />
+            <input
+              value={search}
+              onChange={(e) => onSearch(e.target.value)}
+              placeholder="Filter students..."
+              style={{ border: 0, outline: "none", width: "100%", fontSize: 12, background: "transparent" }}
+            />
+          </label>
+        ) : null}
       </div>
 
-      <div style={{ flex: 1, display: "flex", gap: "32px", minHeight: "400px" }}>
-        <DragDropContext onDragEnd={onDragEnd}>
-          {/* Left: Unassigned Students */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-            <div style={{ padding: "16px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0", fontWeight: "600", color: "#475569" }}>
-              Unassigned Students ({unassigned.length})
-            </div>
-            <Droppable droppableId="unassigned">
-              {(provided) => (
-                <div 
-                  ref={provided.innerRef} 
-                  {...provided.droppableProps}
-                  style={{ flex: 1, padding: "16px", overflowY: "auto", minHeight: "200px" }}
-                >
-                  {unassigned.map((student, index) => (
-                    <Draggable key={student._id} draggableId={student._id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          style={{
-                            userSelect: "none",
-                            padding: "12px 16px",
-                            margin: "0 0 8px 0",
-                            backgroundColor: snapshot.isDragging ? "#bae6fd" : "#fff",
-                            color: snapshot.isDragging ? "#0c4a6e" : "#334155",
-                            borderRadius: "8px",
-                            boxShadow: snapshot.isDragging ? "0 4px 6px rgba(0,0,0,0.1)" : "0 1px 2px rgba(0,0,0,0.05)",
-                            border: "1px solid",
-                            borderColor: snapshot.isDragging ? "#7dd3fc" : "#e2e8f0",
-                            ...provided.draggableProps.style,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "12px"
-                          }}
-                        >
-                          <User size={16} /> {student.displayName || student.email}
+      <Droppable droppableId={droppableId}>
+        {(provided) => (
+          <div ref={provided.innerRef} {...provided.droppableProps} style={{ display: "grid", gap: 8, minHeight: 300 }}>
+            {students.map((student, index) => (
+              <Draggable key={student._id} draggableId={student._id} index={index}>
+                {(dragProvided, snapshot) => (
+                  <motion.div
+                    ref={dragProvided.innerRef}
+                    {...dragProvided.draggableProps}
+                    {...dragProvided.dragHandleProps}
+                    whileHover={{ y: -1 }}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 12,
+                      background: snapshot.isDragging ? "#eaf2ff" : "#fff",
+                      padding: "9px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      ...dragProvided.draggableProps.style,
+                    }}
+                  >
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center", background: "#f3e7dd", color: "#9b5f2f", fontSize: 10, fontWeight: 700 }}>
+                        {(student.displayName || student.email || "S")
+                          .split(" ")
+                          .map((s) => s[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </span>
+                      <div>
+                        <div style={{ fontSize: 12, color: "#2e3744", fontWeight: 700 }}>
+                          {student.displayName || "Unknown Student"}
                         </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </div>
-
-          {/* Right: Class Roster */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", backgroundColor: "#f0fdf4", borderRadius: "12px", border: "1px solid #bbf7d0", overflow: "hidden" }}>
-            <div style={{ padding: "16px", backgroundColor: "#fff", borderBottom: "1px solid #bbf7d0", fontWeight: "600", color: "#166534" }}>
-              Class Roster ({roster.length})
-            </div>
-            <Droppable droppableId="roster">
-              {(provided) => (
-                <div 
-                  ref={provided.innerRef} 
-                  {...provided.droppableProps}
-                  style={{ flex: 1, padding: "16px", overflowY: "auto", minHeight: "200px" }}
-                >
-                  {roster.map((student, index) => (
-                    <Draggable key={student._id} draggableId={student._id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          style={{
-                            userSelect: "none",
-                            padding: "12px 16px",
-                            margin: "0 0 8px 0",
-                            backgroundColor: snapshot.isDragging ? "#86efac" : "#fff",
-                            color: snapshot.isDragging ? "#14532d" : "#166534",
-                            borderRadius: "8px",
-                            boxShadow: snapshot.isDragging ? "0 4px 6px rgba(0,0,0,0.1)" : "0 1px 2px rgba(0,0,0,0.05)",
-                            border: "1px solid",
-                            borderColor: snapshot.isDragging ? "#4ade80" : "#bbf7d0",
-                            ...provided.draggableProps.style,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "12px"
-                          }}
-                        >
-                          <User size={16} /> {student.displayName || student.email}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                  {roster.length === 0 && !provided.placeholder && (
-                    <div style={{ textAlign: "center", color: "#15803d", marginTop: "20px", fontSize: "14px" }}>
-                      Drag students here to add them to the class.
+                        <div style={{ fontSize: 10, color: "#7a8491" }}>ID: {String(student._id).slice(-6)}</div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </Droppable>
+                    <User size={14} color="#8a95a3" />
+                  </motion.div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+
+            {students.length === 0 ? (
+              <div style={{ border: "1px dashed #d6dce7", borderRadius: 12, padding: 18, textAlign: "center", color: "#8a95a3", fontSize: 12 }}>
+                {emptyText}
+              </div>
+            ) : null}
           </div>
-        </DragDropContext>
-      </div>
+        )}
+      </Droppable>
     </div>
   );
 }
