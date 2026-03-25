@@ -177,7 +177,11 @@ export default function GradingView() {
                         type="number" 
                         min="0" max={fb.maxPoints} 
                         value={fb.pointsAwarded}
-                        onChange={(e) => handleScoreChange(idx, Number(e.target.value))}
+                        onChange={(e) => {
+                          const raw = parseFloat(e.target.value) || 0;
+                          const clamped = Math.min(Math.max(0, raw), fb.maxPoints);
+                          handleScoreChange(idx, clamped);
+                        }}
                         style={{ width: "60px", padding: "6px", borderRadius: "6px", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold", fontSize: "16px", color: "#0f172a" }}
                       />
                       <span style={{ color: "#64748b", fontWeight: "600" }}>/ {fb.maxPoints}</span>
