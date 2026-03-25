@@ -378,7 +378,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
                     transition={{ duration: 0.18, delay: idx * 0.03 }}
                     style={{ borderTop: idx === 0 ? "none" : "1px solid var(--line)" }}
                   >
-                    <td style={{ padding: "12px 14px", fontWeight: 600, color: "#364153" }}>calc_mid_{String(idx + 1).padStart(3, "0")}.pdf</td>
+                    <td style={{ padding: "12px 14px", fontWeight: 600, color: "#364153" }}>{sub.fileName || `calc_mid_${String(idx + 1).padStart(3, "0")}.pdf`}</td>
                     <td style={{ padding: "12px 14px" }}>
                       {sub.studentId ? (
                         <span style={{ color: "var(--ink)", fontWeight: 600 }}>
