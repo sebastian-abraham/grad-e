@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { Link, Briefcase, Plus, X } from "lucide-react";
+import { Link, Briefcase, Plus, X, ClipboardList } from "lucide-react";
 
 export default function AssignmentManagement() {
   const [assignments, setAssignments] = useState([]);

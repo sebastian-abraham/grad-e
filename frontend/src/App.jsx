@@ -22,8 +22,50 @@ import StudentLayout from "./components/StudentLayout";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentExamResult from "./pages/StudentExamResult";
 
+const NotFound = () => (
+  <div style={{ padding: "40px", textAlign: "center", fontFamily: "sans-serif", minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+    <h1 style={{ fontSize: "5rem", color: "#333", margin: "0 0 10px 0" }}>404</h1>
+    <h2 style={{ color: "#666", margin: "0 0 20px 0" }}>Page Not Found</h2>
+    <p style={{ color: "#888", marginBottom: "30px" }}>The page you are looking for doesn't exist or has been moved.</p>
+    <a href="/" style={{ color: "#fff", backgroundColor: "#0056b3", padding: "10px 20px", borderRadius: "5px", textDecoration: "none", fontWeight: "bold", transition: "background-color 0.2s" }}>Return to Home</a>
+  </div>
+);
+
+const Unauthorized = () => (
+  <div style={{ padding: "40px", textAlign: "center", fontFamily: "sans-serif", minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+    <h1 style={{ fontSize: "5rem", color: "#d32f2f", margin: "0 0 10px 0" }}>403</h1>
+    <h2 style={{ color: "#666", margin: "0 0 20px 0" }}>Unauthorized Access</h2>
+    <p style={{ color: "#888", marginBottom: "30px" }}>You do not have permission to view this page.</p>
+    <a href="/" style={{ color: "#fff", backgroundColor: "#0056b3", padding: "10px 20px", borderRadius: "5px", textDecoration: "none", fontWeight: "bold", transition: "background-color 0.2s" }}>Return to Dashboard</a>
+  </div>
+);
+
+function ProtectedRoute({ children, allowedRole }) {
+  const { currentUser } = useAuth();
+  
+  if (!currentUser) {
+    return <Navigate to="/" replace />;
+  }
+  
+  if (allowedRole && currentUser.role !== allowedRole) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+  
+  return children;
+}
+
 function App() {
   const { currentUser } = useAuth();
+
+  const getDashboardPath = () => {
+    if (!currentUser) return "/";
+    switch (currentUser.role) {
+      case "admin": return "/admin";
+      case "teacher": return "/teacher";
+      case "student": return "/student";
+      default: return "/dashboard";
+    }
+  };
 
   return (
     <BrowserRouter>
@@ -31,53 +73,62 @@ function App() {
       <Routes>
         <Route 
           path="/" 
-          element={!currentUser ? <Login /> : <Navigate to={currentUser.role === 'admin' ? '/admin' : '/dashboard'} />} 
+          element={!currentUser ? <Login /> : <Navigate to={getDashboardPath()} replace />} 
         />
         
         {/* Admin Routes */}
-        {currentUser && currentUser.role === "admin" && (
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="users" element={<UserManagement />} />
-            <Route path="classes" element={<ClassManagement />} />
-            <Route path="classes/:id" element={<ClassDetail />} />
-            <Route path="subjects" element={<SubjectManagement />} />
-            <Route path="assignments" element={<AssignmentManagement />} />
-          </Route>
-        )}
+        <Route path="/admin" element={
+          <ProtectedRoute allowedRole="admin">
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<UserManagement />} />
+          <Route path="classes" element={<ClassManagement />} />
+          <Route path="classes/:id" element={<ClassDetail />} />
+          <Route path="subjects" element={<SubjectManagement />} />
+          <Route path="assignments" element={<AssignmentManagement />} />
+        </Route>
 
         {/* Teacher Routes */}
-        {currentUser && currentUser.role === "teacher" && (
-          <Route path="/teacher" element={
+        <Route path="/teacher" element={
+          <ProtectedRoute allowedRole="teacher">
             <div style={{minHeight:"100vh"}}><TeacherLayout /></div>
-          }>
-            <Route index element={<TeacherDashboard />} />
-            <Route path="create-exam" element={<CreateExam />} />
-            <Route path="exams/:id" element={<ExamDetail />} />
-            <Route path="exams/:id/grade/:subId" element={<GradingView />} />
-          </Route>
-        )}
+          </ProtectedRoute>
+        }>
+          <Route index element={<TeacherDashboard />} />
+          <Route path="create-exam" element={<CreateExam />} />
+          <Route path="exams/:id" element={<ExamDetail />} />
+          <Route path="exams/:id/grade/:subId" element={<GradingView />} />
+        </Route>
 
         {/* Student Routes */}
-        {currentUser && currentUser.role === "student" && (
-          <Route path="/student" element={
+        <Route path="/student" element={
+          <ProtectedRoute allowedRole="student">
             <div style={{minHeight:"100vh"}}><StudentLayout /></div>
-          }>
-            <Route index element={<StudentDashboard />} />
-            <Route path="exams/:id/result/:subId" element={<StudentExamResult />} />
-          </Route>
-        )}
+          </ProtectedRoute>
+        }>
+          <Route index element={<StudentDashboard />} />
+          <Route path="exams/:id/result/:subId" element={<StudentExamResult />} />
+        </Route>
 
         {/* Dashboard fallback for generic users */}
         <Route path="/dashboard" element={
-          <div style={{ padding: "20px" }}>
-            <h1>Welcome To Grad-E, {currentUser?.displayName || currentUser?.email}</h1>
-            <p>Role: {currentUser?.role}</p>
-          </div>
+          <ProtectedRoute>
+            <div style={{ padding: "40px", textAlign: "center", fontFamily: "sans-serif", minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+              <h1 style={{ color: "#333", marginBottom: "10px" }}>Welcome To Grad-E, {currentUser?.displayName || currentUser?.email}</h1>
+              <p style={{ color: "#666", fontSize: "1.2rem", margin: "0" }}>Role: <span style={{ fontWeight: "bold" }}>{currentUser?.role || "Unassigned"}</span></p>
+              <p style={{ marginTop: "30px", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #e9ecef", color: "#555" }}>
+                Please contact an administrator to assign you a role before you can access specific dashboards.
+              </p>
+            </div>
+          </ProtectedRoute>
         } />
 
-        {/* Catch-all or Unauthorized */}
-        <Route path="*" element={<div style={{ padding: "20px" }}>404 - Not Found or Unauthorized</div>} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+
+        {/* Catch-all */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

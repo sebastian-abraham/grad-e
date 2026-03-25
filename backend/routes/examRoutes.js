@@ -1,8 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const FormData = require("form-data");
 const Exam = require("../models/Exam");
 const Submission = require("../models/Submission");
+
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://localhost:8000";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -46,7 +52,11 @@ router.get("/:id", async (req, res) => {
     const exam = await Exam.findById(req.params.id)
       .populate("subjectId", "name")
       .populate("classId", "name")
-      .populate("teacherId", "displayName email");
+      .populate("teacherId", "displayName email")
+      .populate({
+        path: "seatingArrangement.assignments.studentId",
+        select: "displayName email"
+      });
     if (!exam) return res.status(404).json({ error: "Exam not found" });
     return res.json(exam);
   } catch (error) {
@@ -74,7 +84,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// POST /api/exams/:id/generate-criteria (Step 2 Gemini AI parsing)
+// POST /api/exams/:id/generate-criteria (Step 2 Gemini AI parsing + AI Engine Setup)
 router.post(
   "/:id/generate-criteria",
   upload.fields([{ name: "questionPaper", maxCount: 1 }, { name: "answerKey", maxCount: 1 }]),
@@ -135,14 +145,47 @@ Do not include backticks, markdown, or text outside the raw JSON array.`;
       const parsed = extractJson(rawText);
 
       if (!parsed) {
-         // fallback mock in case of parsing failure to prevent blocking
          return res.json([
            { questionNumber: "1", prompt: "Fallback generation due to parsing err", marks: 5, valuationNotes: "Check steps" }
          ]);
       }
 
-      // Automatically update the exam
-      const exam = await Exam.findByIdAndUpdate(req.params.id, { criteria: parsed }, { new: true });
+      // Update exam with criteria
+      await Exam.findByIdAndUpdate(req.params.id, { criteria: parsed });
+
+      // ── AI Engine Setup (fire-and-forget, non-blocking) ──
+      // Forward the QP and AK to the FastAPI engine so it's ready for grading
+      try {
+        const fd = new FormData();
+        fd.append("question_paper", questionPaper[0].buffer, {
+          filename: questionPaper[0].originalname || "question_paper.pdf",
+          contentType: "application/pdf",
+        });
+        fd.append("answer_key", answerKey[0].buffer, {
+          filename: answerKey[0].originalname || "answer_key.pdf",
+          contentType: "application/pdf",
+        });
+
+        const aiRes = await fetch(`${AI_ENGINE_URL}/api/v1/exam/setup`, {
+          method: "POST",
+          body: fd,
+          headers: fd.getHeaders ? fd.getHeaders() : {},
+        });
+
+        if (aiRes.ok) {
+          const aiData = await aiRes.json();
+          if (aiData.status === "success" && aiData.exam_id) {
+            await Exam.findByIdAndUpdate(req.params.id, { aiExamId: aiData.exam_id });
+            console.log(`[AI Engine] Exam registered: ${aiData.exam_id}`);
+          }
+        } else {
+          console.warn("[AI Engine] Setup failed, grading will still work with fallback.");
+        }
+      } catch (aiErr) {
+        console.warn("[AI Engine] Setup unreachable, continuing without AI setup:", aiErr.message);
+      }
+
+      const exam = await Exam.findById(req.params.id);
       return res.json(exam.criteria);
     } catch (error) {
       return res.status(500).json({ error: error.message });
@@ -176,7 +219,6 @@ router.post("/:id/submissions", upload.array("sheets", 50), async (req, res) => 
 router.get("/:id/submissions", async (req, res) => {
   try {
     const submissions = await Submission.find({ examId: req.params.id }).populate("studentId", "displayName email");
-    // Strip heavy base64 strings so it doesn't crash the frontend on a bulk listing
     const lightSubmissions = submissions.map(s => {
        const obj = s.toObject();
        delete obj.pdfData;
@@ -188,7 +230,7 @@ router.get("/:id/submissions", async (req, res) => {
   }
 });
 
-// GET /api/exams/:id/submissions/:subId (Full PDF retrival)
+// GET /api/exams/:id/submissions/:subId (Full PDF retrieval)
 router.get("/:id/submissions/:subId", async (req, res) => {
   try {
     const sub = await Submission.findById(req.params.subId).populate("studentId", "displayName email");
@@ -211,40 +253,137 @@ router.put("/:id/submissions/:subId/assign", async (req, res) => {
   }
 });
 
-// POST grade all (DUMMY placeholder instead of Gemini)
+// POST /api/exams/:id/grade-all — Real AI Engine Integration
 router.post("/:id/grade-all", async (req, res) => {
   try {
     const examId = req.params.id;
-    await Exam.findByIdAndUpdate(examId, { status: "Processing" });
+    const exam = await Exam.findById(examId);
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
 
-    // Mock processing loop
-    setTimeout(async () => {
-      const submissions = await Submission.find({ examId, status: "Ungraded" });
-      for (const sub of submissions) {
-        // Just mock some arbitrary scores and feedback based on the filename/student name
-        const randomScore = Math.floor(Math.random() * 80) + 20; // 20 - 100
-        
-        await Submission.findByIdAndUpdate(sub._id, {
-          score: randomScore,
-          status: "Graded",
-          feedback: [
-            {
-              questionNumber: "1",
-              pointsAwarded: Math.floor(randomScore/2),
-              maxPoints: 50,
-              studentAnswer: "Mocked Answer Extracted",
-              correctAnswer: "Key Answer",
-              teacherFeedback: "Good attempt but missed logic",
-              status: "partial"
-            }
-          ]
-        });
-      }
-      await Exam.findByIdAndUpdate(examId, { status: "Graded" });
-    }, 3000); // simulate 3 sec async job
-    
-    return res.json({ message: "Grading process started." });
+    if (!exam.aiExamId) {
+      return res.status(400).json({ error: "AI Engine not set up for this exam. Please re-upload question paper and answer key." });
+    }
+
+    const submissions = await Submission.find({ examId, status: "Ungraded" });
+    if (submissions.length === 0) {
+      return res.status(400).json({ error: "No ungraded submissions found." });
+    }
+
+    // Write each submission PDF to a temp file and collect paths
+    const tmpDir = path.join(os.tmpdir(), `grade_${examId}`);
+    fs.mkdirSync(tmpDir, { recursive: true });
+
+    const fd = new FormData();
+    for (const sub of submissions) {
+      const safeName = (sub.fileName || `submission_${sub._id}`).replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = path.join(tmpDir, safeName);
+      fs.writeFileSync(filePath, Buffer.from(sub.pdfData, "base64"));
+      fd.append("student_scripts", fs.createReadStream(filePath), {
+        filename: safeName,
+        contentType: "application/pdf",
+      });
+    }
+
+    // Send to FastAPI grade endpoint
+    const aiRes = await fetch(`${AI_ENGINE_URL}/api/v1/exam/${exam.aiExamId}/grade`, {
+      method: "POST",
+      body: fd,
+      headers: fd.getHeaders ? fd.getHeaders() : {},
+    });
+
+    // Clean up temp files
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch (e) { /* ignore cleanup errors */ }
+
+    if (!aiRes.ok) {
+      const errData = await aiRes.text();
+      return res.status(500).json({ error: "AI Engine grading failed", details: errData });
+    }
+
+    await Exam.findByIdAndUpdate(examId, { status: "Processing" });
+    return res.json({ message: "Grading dispatched to AI engine. Poll /grade-status for progress." });
   } catch (error) {
+    console.error("Grade-all error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/exams/:id/grade-status — Polls FastAPI for completed reports
+router.get("/:id/grade-status", async (req, res) => {
+  try {
+    const examId = req.params.id;
+    const exam = await Exam.findById(examId);
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+
+    if (!exam.aiExamId) {
+      return res.json({ status: "no_ai", graded: 0, total: 0 });
+    }
+
+    // Fetch reports from FastAPI
+    let aiData;
+    try {
+      const aiRes = await fetch(`${AI_ENGINE_URL}/api/v1/exam/${exam.aiExamId}/reports`);
+      aiData = await aiRes.json();
+    } catch (err) {
+      return res.json({ status: "engine_unreachable", graded: 0, total: 0 });
+    }
+
+    const submissions = await Submission.find({ examId });
+    const totalSubs = submissions.length;
+
+    if (!aiData.reports || aiData.reports.length === 0) {
+      return res.json({ status: "processing", graded: 0, total: totalSubs });
+    }
+
+    // Map AI reports back to MongoDB Submissions
+    let newlyGraded = 0;
+    for (const report of aiData.reports) {
+      // Match by student_id (which is the filename without .pdf extension)
+      const reportFileName = report.student_id;
+
+      // Find the matching submission
+      const matchingSub = submissions.find(s => {
+        const subName = (s.fileName || "").replace(/\.pdf$/i, "");
+        return subName === reportFileName;
+      });
+
+      if (matchingSub && matchingSub.status !== "Graded") {
+        // Map AI report questions to our feedback schema
+        const feedback = (report.questions || []).map(q => ({
+          questionNumber: q.id || "Unknown",
+          pointsAwarded: q.points || 0,
+          maxPoints: q.max_points || 0,
+          studentAnswer: q.studentAnswer || "",
+          correctAnswer: q.correctAnswer || "",
+          teacherFeedback: q.feedback || "",
+          status: q.status || "ungraded",
+        }));
+
+        await Submission.findByIdAndUpdate(matchingSub._id, {
+          score: report.score || 0,
+          feedback,
+          status: "Graded",
+        });
+        newlyGraded++;
+      }
+    }
+
+    const gradedCount = await Submission.countDocuments({ examId, status: "Graded" });
+
+    // If all submissions are graded, update exam status
+    if (gradedCount >= totalSubs && totalSubs > 0) {
+      await Exam.findByIdAndUpdate(examId, { status: "Graded" });
+    }
+
+    return res.json({
+      status: gradedCount >= totalSubs ? "completed" : "processing",
+      graded: gradedCount,
+      total: totalSubs,
+      newlyGraded,
+    });
+  } catch (error) {
+    console.error("Grade-status error:", error);
     return res.status(500).json({ error: error.message });
   }
 });
@@ -255,7 +394,6 @@ router.put("/:id/submissions/:subId/grade", async (req, res) => {
     const { score, feedback } = req.body;
     const sub = await Submission.findByIdAndUpdate(req.params.subId, { score, feedback }, { new: true });
     
-    // safe object
     const safeSub = sub.toObject();
     delete safeSub.pdfData;
     return res.json(safeSub);

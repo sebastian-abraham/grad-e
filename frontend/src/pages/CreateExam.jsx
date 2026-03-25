@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, Save, PlayCircle, Settings, X, Plus } from "lucide-react";
+import { FileText, Save, PlayCircle, Settings, X, Plus, Bot, CheckCircle2, Upload } from "lucide-react";
 
 export default function CreateExam() {
   const { currentUser } = useAuth();

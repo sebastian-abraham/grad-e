@@ -4,7 +4,7 @@ import torch
 import base64
 from io import BytesIO
 from PIL import Image
-#os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 from byaldi import RAGMultiModalModel
 
 class LocalColPaliIndexer:
@@ -21,6 +21,8 @@ class LocalColPaliIndexer:
         print("🧹 [LOCAL] Unloading ColPali and clearing VRAM...")
         del self.rag_model
         self.rag_model = None
+        import gc
+        import torch
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

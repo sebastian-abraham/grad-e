@@ -34,6 +34,11 @@ const examSchema = new mongoose.Schema(
       enum: ["Draft", "Setup Complete", "Sheets Uploaded", "Processing", "Graded"],
       default: "Draft",
     },
+    // AI Engine exam identifier (from FastAPI)
+    aiExamId: {
+      type: String,
+      default: null,
+    },
     // The auto-generated or manually edited criteria
     criteria: [
       {
