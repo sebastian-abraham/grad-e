@@ -1,7 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ArrowLeft, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Award } from "lucide-react";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function GradingView() {
   const { id, subId } = useParams();
@@ -14,6 +19,7 @@ export default function GradingView() {
   // Editable feedback state
   const [feedback, setFeedback] = useState([]);
   const [score, setScore] = useState(0);
+  const [numPages, setNumPages] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -103,6 +109,14 @@ export default function GradingView() {
     }
   };
 
+  // Convert base64 PDF data to a data URL for react-pdf
+  const pdfFile = useMemo(() => {
+    if (submission?.pdfData) {
+      return `data:application/pdf;base64,${submission.pdfData}`;
+    }
+    return null;
+  }, [submission?.pdfData]);
+
   if (loading || !submission || !exam) return <div style={{ padding: "40px" }}>Loading grading view...</div>;
 
   return (
@@ -143,15 +157,32 @@ export default function GradingView() {
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         
         {/* Left: PDF Viewer */}
-        <div style={{ flex: 1, borderRight: "1px solid #cbd5e1", backgroundColor: "#e2e8f0", display: "flex", flexDirection: "column" }}>
-           {submission.pdfData ? (
-             <iframe 
-               src={`data:application/pdf;base64,${submission.pdfData}`} 
-               style={{ flex: 1, border: "none", width: "100%", height: "100%" }}
-               title="Student Submission PDF"
-             />
+        <div style={{ flex: 1, borderRight: "1px solid #cbd5e1", backgroundColor: "#4a5568", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+           {pdfFile ? (
+             <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+               <Document
+                 file={pdfFile}
+                 onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+                 onLoadError={(err) => console.error("PDF load error:", err)}
+                 loading={<div style={{ color: "#cbd5e1", padding: "40px" }}>Loading PDF...</div>}
+               >
+                 {numPages && Array.from({ length: numPages }, (_, i) => (
+                   <div key={i} style={{ marginBottom: "12px", boxShadow: "0 2px 12px rgba(0,0,0,0.3)", borderRadius: "4px", overflow: "hidden", position: "relative" }}>
+                     <Page
+                       pageNumber={i + 1}
+                       width={Math.min(700, window.innerWidth * 0.45)}
+                       renderTextLayer={true}
+                       renderAnnotationLayer={true}
+                     />
+                     <div style={{ position: "absolute", bottom: "8px", right: "12px", backgroundColor: "rgba(0,0,0,0.6)", color: "#fff", padding: "2px 10px", borderRadius: "4px", fontSize: "12px", fontWeight: "500" }}>
+                       {i + 1} / {numPages}
+                     </div>
+                   </div>
+                 ))}
+               </Document>
+             </div>
            ) : (
-             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
+             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
                No PDF Data available.
              </div>
            )}
