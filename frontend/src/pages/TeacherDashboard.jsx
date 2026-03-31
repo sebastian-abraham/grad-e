@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus, FileText, ChevronRight, Upload, Play, LoaderCircle, PencilLine } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { DashboardExamCardsSkeleton } from "../components/SkeletonUI";
 
 export default function TeacherDashboard() {
   const { currentUser } = useAuth();
@@ -69,7 +70,7 @@ export default function TeacherDashboard() {
     }
   };
 
-  if (loading) return <div className="teacher-loading">Loading dashboard...</div>;
+  if (loading) return <DashboardExamCardsSkeleton count={8} />;
 
   return (
     <section className="teacher-dashboard">

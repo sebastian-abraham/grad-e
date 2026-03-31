@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, AlertCircle, Award } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { StudentExamResultSkeleton } from "../components/SkeletonUI";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -45,7 +46,7 @@ export default function StudentExamResult() {
     return null;
   }, [submission?.pdfData]);
 
-  if (loading || !submission || !exam) return <div style={{ padding: "40px" }}>Loading your results...</div>;
+  if (loading || !submission || !exam) return <StudentExamResultSkeleton />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#f8fafc" }}>

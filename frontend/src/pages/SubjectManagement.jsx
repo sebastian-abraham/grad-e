@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { BookOpen, Plus, FileEdit, Trash2, X } from "lucide-react";
+import { SubjectManagementSkeleton } from "../components/SkeletonUI";
 
 export default function SubjectManagement() {
   const [subjects, setSubjects] = useState([]);
@@ -54,6 +55,8 @@ export default function SubjectManagement() {
       console.error(error);
     }
   };
+
+  if (loading) return <SubjectManagementSkeleton />;
 
   return (
     <div>

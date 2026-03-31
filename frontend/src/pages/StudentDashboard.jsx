@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CheckCircle2, ChevronRight, Clock3, FileText, LoaderCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { DashboardExamCardsSkeleton } from "../components/SkeletonUI";
 
 export default function StudentDashboard() {
   const { currentUser } = useAuth();
@@ -77,7 +78,7 @@ export default function StudentDashboard() {
     return { icon: <Clock3 size={14} />, label: "Results Unavailable", className: "ghost" };
   };
 
-  if (loading) return <div className="teacher-loading">Loading dashboard...</div>;
+  if (loading) return <DashboardExamCardsSkeleton count={8} />;
 
   return (
     <section className="teacher-dashboard">

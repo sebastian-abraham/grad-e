@@ -28,6 +28,7 @@ import {
   Tooltip,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
+import { ExamDetailSkeleton } from "../components/SkeletonUI";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -60,7 +61,7 @@ export default function ExamDetail() {
     }
   };
 
-  if (loading || !exam) return <div>Loading exam details...</div>;
+  if (loading || !exam) return <ExamDetailSkeleton />;
 
   const tabs = [
     { id: "sheets", label: "Answer Sheets", icon: <Upload size={16} /> },

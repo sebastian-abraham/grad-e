@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileText, Save, PlayCircle, Settings, X, Plus, Bot, CheckCircle2, Upload } from "lucide-react";
+import { CreateExamSkeleton } from "../components/SkeletonUI";
 
 export default function CreateExam() {
   const { currentUser } = useAuth();
@@ -141,6 +142,8 @@ export default function CreateExam() {
       setLoading(false);
     }
   };
+
+  if (!currentUser) return <CreateExamSkeleton />;
 
   return (
     <section className="create-exam-page">
