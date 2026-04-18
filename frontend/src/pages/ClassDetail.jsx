@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import { ArrowLeft, Search, User } from "lucide-react";
 import { motion } from "framer-motion";
+import { ClassDetailSkeleton } from "../components/SkeletonUI";
 
 export default function ClassDetail() {
   const { id } = useParams();
@@ -90,7 +91,7 @@ export default function ClassDetail() {
     [unassigned, search]
   );
 
-  if (loading || !cls) return <div>Loading class details...</div>;
+  if (loading || !cls) return <ClassDetailSkeleton />;
 
   const assignedTeacher = assignments[0]?.teacherId;
 

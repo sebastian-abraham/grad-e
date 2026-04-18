@@ -95,7 +95,6 @@ const Login = () => {
             {loading ? "Signing in..." : "Sign in with Google"}
           </button>
 
-          <div className="security-note">SECURE GATEWAY</div>
         </div>
       </div>
     </div>

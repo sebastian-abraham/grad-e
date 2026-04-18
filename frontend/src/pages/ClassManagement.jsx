@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import {Plus, GraduationCap, Search, Users } from "lucide-react";
+import { ClassManagementSkeleton } from "../components/SkeletonUI";
 
 export default function ClassManagement() {
   const [classes, setClasses] = useState([]);
@@ -52,6 +53,8 @@ export default function ClassManagement() {
     () => classes.filter((c) => c.name?.toLowerCase().includes(query.toLowerCase())),
     [classes, query]
   );
+
+  if (loading) return <ClassManagementSkeleton />;
 
   return (
     <section style={{ display: "grid", gap: 16 }}>

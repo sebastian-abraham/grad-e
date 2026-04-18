@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Users, BookOpen, GraduationCap, ClipboardList, LayoutDashboard, ChevronRight, Plus } from "lucide-react";
+import { AdminDashboardSkeleton } from "../components/SkeletonUI";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) return <div>Loading dashboard...</div>;
+  if (loading) return <AdminDashboardSkeleton />;
 
   return (
     <section className="teacher-dashboard">

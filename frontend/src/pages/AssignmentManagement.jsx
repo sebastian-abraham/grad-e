@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { Link, Briefcase, Plus, X, ClipboardList } from "lucide-react";
+import { AssignmentManagementSkeleton } from "../components/SkeletonUI";
 
 export default function AssignmentManagement() {
   const [assignments, setAssignments] = useState([]);
@@ -81,6 +82,9 @@ export default function AssignmentManagement() {
   }, [assignments, classes]);
 
   return (
+    <>
+      {loading && <AssignmentManagementSkeleton />}
+      {!loading && (
     <section style={{ display: "grid", gap: 16 }}>
       <motion.header
         initial={{ opacity: 0, y: 10 }}
@@ -291,6 +295,8 @@ export default function AssignmentManagement() {
         </div>
       </div>
     </section>
+      )}
+    </>
   );
 }
 
