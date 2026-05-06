@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -18,7 +19,7 @@ export default function TeacherDashboard() {
   const fetchExams = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams?teacherId=${currentUser._id}`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams?teacherId=${currentUser._id}`);
       const data = await res.json();
       setExams(data);
     } catch (error) {
@@ -39,17 +40,17 @@ export default function TeacherDashboard() {
   const getStatusColor = (status) => {
     switch (status) {
       case "Draft":
-        return { bg: "#eef0f3", text: "#5a6675" };
+        return { bg: "#F1F5F9", text: "#475569" };
       case "Setup Complete":
-        return { bg: "#f8d58f", text: "#8a5203" };
+        return { bg: "#FEF3C7", text: "#92400E" };
       case "Sheets Uploaded":
-        return { bg: "#8fddb5", text: "#065f46" };
+        return { bg: "#D1FAE5", text: "#065F46" };
       case "Processing":
-        return { bg: "#f5bb8d", text: "#9a4600" };
+        return { bg: "#FFEDD5", text: "#9A3412" };
       case "Graded":
-        return { bg: "#54b67e", text: "#ffffff" };
+        return { bg: "#6366F1", text: "#FFFFFF" };
       default:
-        return { bg: "#eef0f3", text: "#5a6675" };
+        return { bg: "#F1F5F9", text: "#475569" };
     }
   };
 
@@ -129,7 +130,7 @@ export default function TeacherDashboard() {
                         <span className="teacher-chip" style={{ backgroundColor: colors.bg, color: colors.text }}>
                           {exam.status.toUpperCase()}
                         </span>
-                        <FileText size={17} color="#6b7481" />
+                        <FileText size={17} color="#64748B" />
                       </div>
 
                       <h3 className="teacher-exam-title">{exam.name}</h3>

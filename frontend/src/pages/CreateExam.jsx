@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -46,7 +47,7 @@ export default function CreateExam() {
 
   const fetchAssignments = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/assignments/${currentUser._id}`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/teacher/assignments/${currentUser._id}`);
       const data = await res.json();
       setAssignments({ classes: data.classes, subjects: data.subjects });
     } catch (error) {
@@ -58,7 +59,7 @@ export default function CreateExam() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams`, {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
@@ -97,7 +98,7 @@ export default function CreateExam() {
     fd.append("answerKey", files.answerKey);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${examId}/generate-criteria`, {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${examId}/generate-criteria`, {
         method: "POST",
         body: fd
       });
@@ -130,7 +131,7 @@ export default function CreateExam() {
 
     setLoading(true);
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${examId}`, {
+      await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${examId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ criteria, status: "Setup Complete" })

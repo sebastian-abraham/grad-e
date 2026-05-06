@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -36,7 +37,7 @@ const panel = {
   backgroundColor: "#fff",
   border: "1px solid var(--line)",
   borderRadius: "16px",
-  boxShadow: "0 10px 28px rgba(42, 56, 74, 0.06)",
+  boxShadow: "var(--shadow-soft)",
 };
 
 export default function ExamDetail() {
@@ -51,7 +52,7 @@ export default function ExamDetail() {
 
   const fetchExam = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}`);
       const data = await res.json();
       setExam(data);
     } catch (error) {
@@ -205,12 +206,12 @@ function AnswerSheetsTab({ exam, fetchExam }) {
   }, [exam]);
 
   const fetchSubmissions = async () => {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`);
+    const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`);
     setSubmissions(await res.json());
   };
 
   const fetchClassStudents = async () => {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/classes/${exam.classId._id}`);
+    const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/classes/${exam.classId._id}`);
     const data = await res.json();
     setClassStudents(data.students);
   };
@@ -224,7 +225,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
     for (let i = 0; i < files.length; i += 1) fd.append("sheets", files[i]);
 
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`, {
+      await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`, {
         method: "POST",
         body: fd,
       });
@@ -240,7 +241,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
   const handleAssignStudent = async (subId, studentId) => {
     try {
       if (!studentId) return;
-      await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions/${subId}/assign`, {
+      await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions/${subId}/assign`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId }),
@@ -258,7 +259,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
     setGradeProgress(null);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/grade-all`, { method: "POST" });
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/grade-all`, { method: "POST" });
       if (!res.ok) {
         const err = await res.json();
         toast.error(err.error || "Failed to start grading.");
@@ -271,7 +272,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
       // Start polling for grading progress
       const pollInterval = setInterval(async () => {
         try {
-          const statusRes = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/grade-status`);
+          const statusRes = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/grade-status`);
           const statusData = await statusRes.json();
           setGradeProgress({ graded: statusData.graded, total: statusData.total });
 
@@ -507,7 +508,7 @@ function SeatingTab({ exam, fetchExam }) {
   }, [exam]);
 
   const fetchClassStudents = async () => {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/classes/${exam.classId._id}`);
+    const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/classes/${exam.classId._id}`);
     const data = await res.json();
     setOrderedStudents(data.students);
   };
@@ -539,7 +540,7 @@ function SeatingTab({ exam, fetchExam }) {
         studentId: a.studentId?._id || a.studentId
       }));
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}`, {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seatingArrangement: { rows, cols, assignments: cleanAssignments } }),
@@ -809,7 +810,7 @@ function OverviewTab({ exam }) {
   const [submissions, setSubmissions] = useState([]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`)
+    apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`)
       .then((res) => res.json())
       .then((data) => setSubmissions(data.filter((s) => s.status === "Graded")));
   }, [exam]);

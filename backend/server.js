@@ -13,6 +13,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const examRoutes = require("./routes/examRoutes");
 const teacherRoutes = require("./routes/teacherRoutes");
 const studentRoutes = require("./routes/studentRoutes");
+const { verifyToken, authorizeRoles } = require("./middlewares/authMiddleware");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,13 +26,13 @@ app.use(express.json());
 
 // Routes
 app.use("/api/users", userRoutes);
-app.use("/api/classes", classRoutes);
-app.use("/api/subjects", subjectRoutes);
-app.use("/api/assignments", assignmentRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/exams", examRoutes);
-app.use("/api/teacher", teacherRoutes);
-app.use("/api/student", studentRoutes);
+app.use("/api/classes", verifyToken, classRoutes);
+app.use("/api/subjects", verifyToken, subjectRoutes);
+app.use("/api/assignments", verifyToken, assignmentRoutes);
+app.use("/api/admin", verifyToken, authorizeRoles("admin"), adminRoutes);
+app.use("/api/exams", verifyToken, examRoutes);
+app.use("/api/teacher", verifyToken, authorizeRoles("teacher"), teacherRoutes);
+app.use("/api/student", verifyToken, authorizeRoles("student"), studentRoutes);
 
 const upload = multer({
   storage: multer.memoryStorage(),

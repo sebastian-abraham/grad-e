@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -17,7 +18,7 @@ export default function StudentDashboard() {
   const fetchExams = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/dashboard/${currentUser._id}`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/student/dashboard/${currentUser._id}`);
       const data = await res.json();
       setExams(data);
     } catch (error) {
@@ -37,18 +38,18 @@ export default function StudentDashboard() {
 
   const getStatusColor = (exam) => {
     if (exam.status === "Graded" && exam.mySubmission?.score !== undefined) {
-      return { bg: "#54b67e", text: "#ffffff", label: "GRADED" };
+      return { bg: "#6366F1", text: "#FFFFFF", label: "GRADED" };
     }
     if (exam.status === "Graded" && !exam.mySubmission) {
-      return { bg: "#f5bb8d", text: "#9a4600", label: "MISSED" };
+      return { bg: "#FFEDD5", text: "#9A3412", label: "MISSED" };
     }
     if (exam.mySubmission) {
-      return { bg: "#f8d58f", text: "#8a5203", label: "AWAITING" };
+      return { bg: "#FEF3C7", text: "#92400E", label: "AWAITING" };
     }
     if (exam.status === "Processing") {
-      return { bg: "#f5bb8d", text: "#9a4600", label: "PROCESSING" };
+      return { bg: "#FFEDD5", text: "#9A3412", label: "PROCESSING" };
     }
-    return { bg: "#eef0f3", text: "#5a6675", label: "PENDING" };
+    return { bg: "#F1F5F9", text: "#475569", label: "PENDING" };
   };
 
   const getActionConfig = (exam) => {
@@ -134,7 +135,7 @@ export default function StudentDashboard() {
                         <span className="teacher-chip" style={{ backgroundColor: status.bg, color: status.text }}>
                           {status.label}
                         </span>
-                        <FileText size={17} color="#6b7481" />
+                        <FileText size={17} color="#64748B" />
                       </div>
 
                       <h3 className="teacher-exam-title">{exam.name}</h3>
