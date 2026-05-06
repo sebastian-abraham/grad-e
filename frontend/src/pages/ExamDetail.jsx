@@ -210,14 +210,23 @@ function AnswerSheetsTab({ exam, fetchExam }) {
   }, [exam]);
 
   const fetchSubmissions = async () => {
-    const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`);
-    setSubmissions(await res.json());
+    try {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`);
+      const data = await res.json();
+      setSubmissions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch submissions error:", err);
+    }
   };
 
   const fetchClassStudents = async () => {
-    const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/classes/${exam.classId._id}`);
-    const data = await res.json();
-    setClassStudents(data.students);
+    try {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/classes/${exam.classId._id}`);
+      const data = await res.json();
+      setClassStudents(data.students || []);
+    } catch (err) {
+      console.error("Fetch class students error:", err);
+    }
   };
 
   const handleUpload = async (e) => {
@@ -229,16 +238,23 @@ function AnswerSheetsTab({ exam, fetchExam }) {
     for (let i = 0; i < files.length; i += 1) fd.append("sheets", files[i]);
 
     try {
-      await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`, {
+      const uploadPromise = apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`, {
         method: "POST",
         body: fd,
       });
-      fetchSubmissions();
-      fetchExam();
+
+      await toast.promise(uploadPromise, {
+        loading: "Uploading papers...",
+        success: "Papers uploaded successfully!",
+        error: "Failed to upload papers",
+      });
+
+      await Promise.all([fetchSubmissions(), fetchExam()]);
     } catch (err) {
       console.error(err);
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -267,9 +283,6 @@ function AnswerSheetsTab({ exam, fetchExam }) {
     setDeletingId(subId);
     setIsDeleteModalOpen(false);
 
-    // Optimistic Update: Remove from local UI immediately
-    setSubmissions((prev) => prev.filter((s) => s._id !== subId));
-
     try {
       const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions/${subId}`, {
         method: "DELETE",
@@ -280,13 +293,10 @@ function AnswerSheetsTab({ exam, fetchExam }) {
       }
 
       toast.success("Paper deleted successfully");
-      // Re-fetch to ensure sync and update metrics
-      fetchSubmissions();
-      fetchExam(); 
+      await Promise.all([fetchSubmissions(), fetchExam()]);
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete paper");
-      // Revert on failure
       fetchSubmissions();
     } finally {
       setDeletingId(null);
@@ -294,7 +304,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
     }
   };
 
-  const [gradeProgress, setGradeProgress] = useState(null); // { graded, total }
+  const [gradeProgress, setGradeProgress] = useState(null);
 
   const handleProcess = async () => {
     setProcessing(true);
@@ -311,7 +321,6 @@ function AnswerSheetsTab({ exam, fetchExam }) {
       toast.success("AI grading started! This may take a few minutes...");
       fetchExam();
 
-      // Start polling for grading progress
       const pollInterval = setInterval(async () => {
         try {
           const statusRes = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/grade-status`);
@@ -547,12 +556,6 @@ function AnswerSheetsTab({ exam, fetchExam }) {
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-        <MetricCard title="Processing Progress" value={`${submissions.length > 0 ? 88 : 0}%`} subtitle="from last upload" color="var(--accent-strong)" />
-        <MetricCard title="Anomaly Detection" value={`${unassigned}`} subtitle="Unlinked sheets" color="var(--accent)" />
-        <MetricCard title="Average Score" value={`${avgScore}`} subtitle="Class performance" color="var(--accent-strong)" />
       </div>
 
       <AnimatePresence>
