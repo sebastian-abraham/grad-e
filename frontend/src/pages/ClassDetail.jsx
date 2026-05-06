@@ -220,11 +220,11 @@ function DroppableColumn({
             {students.map((student, index) => (
               <Draggable key={student._id} draggableId={student._id} index={index}>
                 {(dragProvided, snapshot) => (
-                  <motion.div
+                  <div
                     ref={dragProvided.innerRef}
                     {...dragProvided.draggableProps}
                     {...dragProvided.dragHandleProps}
-                    whileHover={{ y: -1 }}
+
                     style={{
                       border: "1px solid #e2e8f0",
                       borderRadius: 12,
@@ -234,6 +234,7 @@ function DroppableColumn({
                       alignItems: "center",
                       justifyContent: "space-between",
                       gap: 10,
+                      userSelect: "none",
                       ...dragProvided.draggableProps.style,
                     }}
                   >
@@ -254,7 +255,7 @@ function DroppableColumn({
                       </div>
                     </div>
                     <User size={14} color="#8a95a3" />
-                  </motion.div>
+                  </div>
                 )}
               </Draggable>
             ))}
