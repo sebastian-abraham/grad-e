@@ -939,6 +939,7 @@ function SeatingTab({ exam, fetchExam }) {
 
 function OverviewTab({ exam }) {
   const [submissions, setSubmissions] = useState([]);
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
 
   useEffect(() => {
     apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`)
@@ -998,10 +999,50 @@ function OverviewTab({ exam }) {
     },
   };
 
+  const calculateWeakestQuestions = () => {
+    if (!exam.criteria || exam.criteria.length === 0) return [];
+    
+    const qStats = {};
+    
+    exam.criteria.forEach(c => {
+      let baseNum = c.questionNumber.match(/\d+/);
+      if (baseNum) {
+        qStats[baseNum[0]] = {
+          q: `Q${c.questionNumber}`,
+          totalAwarded: 0,
+          totalMax: c.marks * submissions.length,
+          prompt: c.prompt || ""
+        };
+      }
+    });
+
+    submissions.forEach(sub => {
+      if (!sub.feedback) return;
+      sub.feedback.forEach(item => {
+        let baseNum = item.questionNumber.match(/\d+/);
+        if (baseNum && qStats[baseNum[0]]) {
+          qStats[baseNum[0]].totalAwarded += (item.pointsAwarded || 0);
+        }
+      });
+    });
+
+    const results = Object.values(qStats).map(stat => {
+      let pct = stat.totalMax > 0 ? Math.round((stat.totalAwarded / stat.totalMax) * 100) : 0;
+      let title = `${stat.q} - ${stat.prompt.length > 20 ? stat.prompt.substring(0, 20) + "..." : stat.prompt}`;
+      return { q: title, fullPrompt: stat.prompt, pct, qNum: stat.q };
+    });
+
+    results.sort((a, b) => a.pct - b.pct);
+    return results;
+  };
+
+  const allQuestionsStats = calculateWeakestQuestions();
+  const weakestQuestions = allQuestionsStats.slice(0, 3);
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-        <MetricCard title="Class Average" value={`${avg}%`} subtitle="vs last term" color="var(--accent-strong)" />
+        <MetricCard title="Class Average" value={`${avg}/${exam.totalMarks}`} subtitle="" color="var(--accent-strong)" />
         <MetricCard title="Highest Score" value={`${max}/${exam.totalMarks}`} subtitle="Top performance" color="var(--accent)" />
         <MetricCard title="Total Submissions" value={`${submissions.length}`} subtitle={`of ${submissions.length}`} color="var(--accent-strong)" />
       </div>
@@ -1029,11 +1070,9 @@ function OverviewTab({ exam }) {
           <h3 style={{ margin: 0 }}>Weakest Questions</h3>
           <p style={{ margin: "4px 0 14px", color: "var(--muted)", fontSize: 12 }}>Prioritize these areas for review</p>
 
-          {[
-            { q: "Q4 - Integral Calculus Basics", pct: 32 },
-            { q: "Q7 - Mean Value Theorem", pct: 45 },
-            { q: "Q2 - Limits at Infinity", pct: 51 },
-          ].map((item) => (
+          {weakestQuestions.length === 0 ? (
+            <div style={{ color: "var(--muted)", fontSize: 13 }}>No data available yet.</div>
+          ) : weakestQuestions.map((item) => (
             <div key={item.q} style={{ marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{item.q}</span>
@@ -1052,6 +1091,7 @@ function OverviewTab({ exam }) {
 
           <button
             type="button"
+            onClick={() => setIsAnalysisModalOpen(true)}
             style={{
               marginTop: 4,
               width: "100%",
@@ -1062,12 +1102,79 @@ function OverviewTab({ exam }) {
               fontWeight: 700,
               padding: "10px 14px",
               cursor: "pointer",
+              transition: "all 0.2s"
             }}
+            onMouseOver={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = "#fff"; }}
           >
             View Full Item Analysis
           </button>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {isAnalysisModalOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(19, 26, 38, 0.48)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 100,
+              padding: 16,
+            }}
+            onClick={() => setIsAnalysisModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "min(600px, 100%)",
+                maxHeight: "80vh",
+                display: "flex",
+                flexDirection: "column",
+                borderRadius: 20,
+                background: "#fff",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                overflow: "hidden"
+              }}
+            >
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111827" }}>Full Item Analysis</h2>
+                <button 
+                  onClick={() => setIsAnalysisModalOpen(false)}
+                  style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#6b7280", lineHeight: 1 }}
+                >
+                  &times;
+                </button>
+              </div>
+              <div style={{ padding: 24, overflowY: "auto" }}>
+                {allQuestionsStats.map((item, idx) => (
+                  <div key={item.q} style={{ marginBottom: 20 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "#1e293b" }}>{item.qNum}</span>
+                      <span style={{ color: item.pct < 50 ? "#ef4444" : item.pct < 75 ? "#f59e0b" : "#10b981", fontWeight: 800 }}>{item.pct}%</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8, lineHeight: 1.4 }}>{item.fullPrompt}</div>
+                    <div style={{ height: 8, background: "#e6ebf2", borderRadius: 999 }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${item.pct}%` }}
+                        transition={{ duration: 0.5, delay: idx * 0.05, ease: "easeOut" }}
+                        style={{ height: 8, borderRadius: 999, background: item.pct < 50 ? "#ef4444" : item.pct < 75 ? "#f59e0b" : "#10b981" }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1125,7 +1232,7 @@ function MetricCard({ title, value, subtitle, color }) {
         {title}
       </p>
       <p style={{ margin: "6px 0 2px", color, fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{value}</p>
-      <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>{subtitle}</p>
+      {subtitle && <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>{subtitle}</p>}
     </motion.div>
   );
 }
