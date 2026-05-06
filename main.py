@@ -53,7 +53,7 @@ async def setup_exam(
 async def grade_batch(
     exam_id: str, 
     background_tasks: BackgroundTasks,
-    student_scripts: Annotated[list[UploadFile], File()]
+    student_scripts: list[UploadFile]=File(...)
 ):
     """Endpoint 2: Upload student batches and trigger the Auto-Failover Router."""
     

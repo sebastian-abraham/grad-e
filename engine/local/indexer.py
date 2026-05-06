@@ -32,13 +32,16 @@ class LocalColPaliIndexer:
             self.load_model()
             
         print(f"📄 [LOCAL] Indexing {pdf_path} as '{index_name}'...")
-        self.rag_model.index(
-            input_path=pdf_path,
-            index_name=index_name,
-            store_collection_with_index=True,
-            overwrite=True
-        )
-        print(f"✅ [LOCAL] Index '{index_name}' created successfully.")
+        try:
+            self.rag_model.index(
+                input_path=pdf_path,
+                index_name=index_name,
+                store_collection_with_index=True,
+                overwrite=True
+            )
+            print(f"✅ [LOCAL] Index '{index_name}' created successfully.")
+        except Exception as e:
+            print(f"❌ [LOCAL] Failed to create index '{index_name}': {e}")
 
     def extract_crop(self, index_name, query, output_prefix, k=2):
         """Searches the index and saves the Top-K image patches to disk."""
