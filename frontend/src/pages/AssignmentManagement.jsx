@@ -2,20 +2,18 @@ import { apiFetch } from "../utils/apiFetch";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { Link, Briefcase, Plus, X, ClipboardList } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { AssignmentManagementSkeleton } from "../components/SkeletonUI";
 
 export default function AssignmentManagement() {
   const [assignments, setAssignments] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [formData, setFormData] = useState({ classId: "", subjectId: "", teacherId: "" });
-  const [loading, setLoading] = useState(true);
+  const [classes, setClasses]         = useState([]);
+  const [subjects, setSubjects]       = useState([]);
+  const [teachers, setTeachers]       = useState([]);
+  const [formData, setFormData]       = useState({ classId: "", subjectId: "", teacherId: "" });
+  const [loading, setLoading]         = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -26,7 +24,6 @@ export default function AssignmentManagement() {
         apiFetch(`${import.meta.env.VITE_API_URL}/api/subjects`),
         apiFetch(`${import.meta.env.VITE_API_URL}/api/users?role=teacher`),
       ]);
-
       setAssignments(await assignRes.json());
       setClasses(await classRes.json());
       setSubjects(await subRes.json());
@@ -41,17 +38,16 @@ export default function AssignmentManagement() {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!formData.classId || !formData.subjectId || !formData.teacherId) return;
-
     try {
       const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-
       if (res.ok) {
         setFormData({ classId: "", subjectId: "", teacherId: "" });
         fetchData();
+        toast.success("Assignment created");
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to create assignment");
@@ -62,261 +58,177 @@ export default function AssignmentManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Remove this assignment?")) return;
     try {
       const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/assignments/${id}`, { method: "DELETE" });
-      if (res.ok) fetchData();
+      if (res.ok) { fetchData(); toast.success("Assignment removed"); }
     } catch (error) {
       console.error(error);
     }
   };
 
   const overview = useMemo(() => {
-    const totalFaculty = new Set(
-      assignments.map((a) => a.teacherId?._id).filter(Boolean)
-    ).size;
-    return {
-      activeCourses: assignments.length,
-      totalCourses: classes.length,
-      totalFaculty,
-    };
+    const totalFaculty = new Set(assignments.map((a) => a.teacherId?._id).filter(Boolean)).size;
+    return { activeCourses: assignments.length, totalCourses: classes.length, totalFaculty };
   }, [assignments, classes]);
 
+  if (loading) return <AssignmentManagementSkeleton />;
+
   return (
-    <>
-      {loading && <AssignmentManagementSkeleton />}
-      {!loading && (
-    <section style={{ display: "grid", gap: 16 }}>
-      <motion.header
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        style={{ display: "grid", gap: 8 }}
-      >
-        <p style={{ margin: 0, fontSize: 10, letterSpacing: "0.16em", color: "var(--accent-strong)", textTransform: "uppercase", fontWeight: 800 }}>
-          Academic Authority · Curriculum
-        </p>
-        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.06, color: "#232b37" }}>Global Assignments</h1>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-          Manage course distribution and faculty workload across the university ecosystem.
-        </p>
-      </motion.header>
+    <section className="assign-page">
 
+      {/* ── Page Header ── */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 }}
-        style={{
-          border: "1px solid var(--line)",
-          borderRadius: 16,
-          background: "#fff",
-          padding: 14,
-          display: "grid",
-          gap: 12,
-        }}
+        className="assign-page-head"
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }}
       >
-        <h2 style={{ margin: 0, fontSize: 17, color: "#2d3542" }}>Assign Teacher to Class & Subject</h2>
+        <p className="assign-eyebrow">Academic Authority · Curriculum</p>
+        <h1>Global Assignments</h1>
+        <p>Manage course distribution and faculty workload across the university ecosystem.</p>
+      </motion.div>
 
-        <form onSubmit={handleCreate} style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, alignItems: "end" }}>
-          <Field label="Class">
+      {/* ── Assign Form ── */}
+      <motion.div
+        className="assign-card"
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, delay: 0.04 }}
+      >
+        <h2 className="assign-card-title">Assign Teacher to Class & Subject</h2>
+        <form onSubmit={handleCreate} className="assign-form-row">
+          <div className="assign-field">
+            <label htmlFor="assign-class">Class</label>
             <select
+              id="assign-class"
               required
+              className="assign-select"
               value={formData.classId}
               onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
-              style={selectStyle}
             >
-              <option value="">Select class...</option>
-              {classes.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.name}
-                </option>
-              ))}
+              <option value="">Select class…</option>
+              {classes.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
             </select>
-          </Field>
+          </div>
 
-          <Field label="Subject">
+          <div className="assign-field">
+            <label htmlFor="assign-subject">Subject</label>
             <select
+              id="assign-subject"
               required
+              className="assign-select"
               value={formData.subjectId}
               onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
-              style={selectStyle}
             >
-              <option value="">Select subject...</option>
-              {subjects.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.name}
-                </option>
-              ))}
+              <option value="">Select subject…</option>
+              {subjects.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
             </select>
-          </Field>
+          </div>
 
-          <Field label="Teacher">
+          <div className="assign-field">
+            <label htmlFor="assign-teacher">Teacher</label>
             <select
+              id="assign-teacher"
               required
+              className="assign-select"
               value={formData.teacherId}
               onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
-              style={selectStyle}
             >
-              <option value="">Select teacher...</option>
-              {teachers.map((t) => (
-                <option key={t._id} value={t._id}>
-                  {t.displayName || t.email}
-                </option>
-              ))}
+              <option value="">Select teacher…</option>
+              {teachers.map((t) => <option key={t._id} value={t._id}>{t.displayName || t.email}</option>)}
             </select>
-          </Field>
+          </div>
 
-          <button
-            type="submit"
-            style={{
-              height: 40,
-              border: 0,
-              borderRadius: 12,
-              background: "var(--accent-strong)",
-              color: "#fff",
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
+          <button type="submit" className="assign-submit-btn">
             <Plus size={16} /> Assign
           </button>
         </form>
       </motion.div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 210px", gap: 14 }}>
-        <div style={{ border: "1px solid var(--line)", borderRadius: 16, background: "#fff", overflow: "hidden" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid #eef1f5" }}>
-            <h3 style={{ margin: 0, fontSize: 16, color: "#2d3644" }}>Master Course List</h3>
-            <span style={{ color: "#22a35a", fontSize: 11, fontWeight: 700 }}>
-              ● {overview.activeCourses} ACTIVE COURSES
-            </span>
+      {/* ── Table + Overview ── */}
+      <motion.div
+        className="assign-layout"
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, delay: 0.08 }}
+      >
+        {/* Main Table */}
+        <div className="assign-card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ padding: "18px 24px" }} className="assign-table-header">
+            <h3>Master Course List</h3>
+            <span className="assign-active-badge">● {overview.activeCourses} Active</span>
           </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead style={{ background: "#f7f9fc", color: "#647181", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <table className="assign-table">
+            <thead>
               <tr>
-                <th style={{ padding: "10px 12px" }}>Class Name</th>
-                <th style={{ padding: "10px 12px" }}>Subject</th>
-                <th style={{ padding: "10px 12px" }}>Assigned Teacher(s)</th>
-                <th style={{ padding: "10px 12px", textAlign: "right" }}>Actions</th>
+                <th>Class</th>
+                <th>Subject</th>
+                <th>Assigned Teacher</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {assignments.length === 0 ? (
                 <tr>
-                  <td colSpan="4" style={{ padding: 16, textAlign: "center", color: "var(--muted)" }}>
-                    Loading assignments...
+                  <td colSpan={4} style={{ textAlign: "center", color: "var(--muted)", padding: "28px 14px" }}>
+                    No assignments yet. Create one above.
                   </td>
                 </tr>
-              ) : assignments.length === 0 ? (
-                <tr>
-                  <td colSpan="4" style={{ padding: 16, textAlign: "center", color: "var(--muted)" }}>
-                    No assignments available.
+              ) : assignments.map((assign) => (
+                <tr key={assign._id}>
+                  <td style={{ fontWeight: 700 }}>{assign.classId?.name || "Deleted Class"}</td>
+                  <td style={{ color: "var(--muted)" }}>{assign.subjectId?.name || "Deleted Subject"}</td>
+                  <td>
+                    <span className="assign-teacher-chip">
+                      {assign.teacherId?.displayName || assign.teacherId?.email || "Deleted Teacher"}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <button
+                      type="button"
+                      className="assign-remove-btn"
+                      onClick={() => handleDelete(assign._id)}
+                    >
+                      Remove
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                assignments.map((assign) => (
-                  <tr key={assign._id} style={{ borderTop: "1px solid #f0f2f5" }}>
-                    <td style={{ padding: "11px 12px", fontWeight: 700, color: "#2a3340" }}>
-                      {assign.classId?.name || "Deleted Class"}
-                    </td>
-                    <td style={{ padding: "11px 12px", color: "#4b5563" }}>
-                      {assign.subjectId?.name || "Deleted Subject"}
-                    </td>
-                    <td style={{ padding: "11px 12px" }}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          background: "#eaf0f7",
-                          border: "1px solid #d8e2ef",
-                          borderRadius: 999,
-                          padding: "5px 10px",
-                          fontSize: 11,
-                          color: "#3b495a",
-                        }}
-                      >
-                        {assign.teacherId?.displayName || assign.teacherId?.email || "Deleted Teacher"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "11px 12px", textAlign: "right" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(assign._id)}
-                        style={{ border: 0, background: "transparent", color: "#bc4e4e", cursor: "pointer", fontWeight: 600 }}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
 
-          <div style={{ borderTop: "1px solid #eef1f5", padding: "10px 12px", color: "#7a8595", fontSize: 11 }}>
-            Showing {assignments.length} of {classes.length} classes
+          <div className="assign-table-footer">
+            Showing {assignments.length} of {classes.length} class{classes.length !== 1 ? "es" : ""}
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
-          <div style={{ border: "1px solid var(--line)", background: "#F8FAFC", borderRadius: 14, padding: 12 }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Status Overview
-            </h4>
+        {/* Overview Sidebar */}
+        <div className="assign-overview-card">
+          <p className="assign-overview-title">Status Overview</p>
 
-            <div style={{ borderRadius: 12, background: "#fff", border: "1px solid var(--line)", padding: 10, marginBottom: 8 }}>
-              <div style={{ color: "#8c98a7", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>Unassigned Courses</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
-                <strong style={{ fontSize: 24, color: "#c0602b" }}>{Math.max(classes.length - assignments.length, 0)}</strong>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#b35322" }}>CRITICAL</span>
-              </div>
+          <div className="assign-overview-stat">
+            <div className="assign-overview-stat-label">Unassigned Courses</div>
+            <div className="assign-overview-stat-value" style={{ color: Math.max(classes.length - assignments.length, 0) > 0 ? "var(--danger)" : "var(--ink)" }}>
+              {Math.max(classes.length - assignments.length, 0)}
             </div>
-
-            <div style={{ borderRadius: 12, background: "#fff", border: "1px solid var(--line)", padding: 10 }}>
-              <div style={{ color: "#8c98a7", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>Total Faculty</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
-                <strong style={{ fontSize: 24, color: "#2d3947" }}>{overview.totalFaculty}</strong>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#1f8d4f" }}>ACTIVE</span>
-              </div>
+            <div className="assign-overview-stat-sub" style={{ color: "var(--danger)" }}>
+              {Math.max(classes.length - assignments.length, 0) > 0 ? "NEEDS ATTENTION" : "ALL COVERED"}
             </div>
           </div>
 
-          <div style={{ border: "1px solid var(--line)", borderRadius: 14, background: "#fff", padding: 12 }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#2c3442" }}>Assignment Summary</h4>
-            <div style={{ color: "#7a8595", fontSize: 12, lineHeight: 1.5 }}>
-              <div>Total courses: {overview.totalCourses}</div>
-              <div>Active assignments: {overview.activeCourses}</div>
-              <div>Available teachers: {teachers.length}</div>
+          <div className="assign-overview-stat">
+            <div className="assign-overview-stat-label">Active Faculty</div>
+            <div className="assign-overview-stat-value" style={{ color: "var(--ink)" }}>
+              {overview.totalFaculty}
             </div>
+            <div className="assign-overview-stat-sub" style={{ color: "var(--success)" }}>ACTIVE</div>
+          </div>
+
+          <div className="assign-overview-stat">
+            <div className="assign-overview-stat-label">Total Courses</div>
+            <div className="assign-overview-stat-value" style={{ color: "var(--ink)" }}>
+              {overview.totalCourses}
+            </div>
+            <div className="assign-overview-stat-sub" style={{ color: "var(--muted)" }}>IN CATALOG</div>
           </div>
         </div>
-      </div>
+      </motion.div>
+
     </section>
-      )}
-    </>
   );
 }
-
-function Field({ label, children }) {
-  return (
-    <label style={{ display: "grid", gap: 6 }}>
-      <span style={{ fontSize: 11, color: "#788294", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-const selectStyle = {
-  height: 40,
-  borderRadius: 10,
-  border: "1px solid #d8dde6",
-  background: "#fff",
-  padding: "0 10px",
-  color: "#2f3743",
-};

@@ -87,4 +87,5 @@ This overhaul addressed three core issues with the previous frontend design:
 4. **Consistent borders** — All borders use `var(--line)` (slate-200) for consistency.
 5. **Elevation through shadow** — Three shadow levels: `--shadow-soft`, `--shadow-float`, `--shadow-elevated`.
 6. **Glassmorphic topbar** — Topbar uses `backdrop-filter: blur(12px)` with semi-transparent white.
-7. **Gradient brand name** — The "Grade-E" sidebar logo uses the accent gradient with `-webkit-background-clip: text`.
+7. **Admin Dashboard Grid** — Strict 4-column layouts (`admin-stat-grid`, `admin-action-grid`) with defined card limits.
+8. **Contained Management Tables** — `SubjectManagement` and `AssignmentManagement` wrap forms and tables inside `assign-card` for boundary definition. Inputs are unified at 42px height (`assign-select`) and bottom-aligned for horizontal symmetry.
