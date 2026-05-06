@@ -101,11 +101,11 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 64px;
+  margin-bottom: 2px;
 }
 .login-brand-mark img {
-  width: 42px;
-  height: 42px;
+  width: 100px;
+  height: 100px;
   filter: brightness(0) invert(1);
 }
 .login-brand-mark span {
@@ -222,15 +222,15 @@
 
 /* Logo */
 .brand-logo {
-  width: 88px;
-  height: 88px;
+  /* Set one dimension and let the other be auto */
+  width: 180px; 
+  height: auto;
+  
   display: block;
-  margin: 0 auto 16px;
+  margin: 0 auto 1rem; /* Added some bottom margin for breathing room */
+  
+  /* Remove the min-width/height unless you have a specific reason for them */
   filter: drop-shadow(0 6px 20px rgba(99, 102, 241, 0.32));
-  /* ensure SVG respects fixed size */
-  min-width: 88px;
-  min-height: 88px;
-  object-fit: contain;
 }
 
 /* Title */

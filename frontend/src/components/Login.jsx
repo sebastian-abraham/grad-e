@@ -38,13 +38,6 @@ const Login = () => {
         <div className="login-geo login-geo-2" />
         <div className="login-geo login-geo-3" />
         <div className="login-geo login-geo-4" />
-
-        {/* Brand mark top-left */}
-        <div className="login-brand-mark">
-          <img src="/grad-e.svg" alt="Grade-E" />
-          <span>Grade-E</span>
-        </div>
-
         {/* Headline copy */}
         <div className="login-left-headline">
           <h2>
@@ -100,7 +93,6 @@ const Login = () => {
             {loading ? "Signing in…" : "Continue with Google"}
           </button>
 
-          <p className="security-note">🔒 Secured with Firebase Auth</p>
         </div>
       </div>
     </div>
