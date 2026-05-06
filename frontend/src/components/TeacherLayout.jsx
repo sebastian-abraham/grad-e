@@ -8,7 +8,6 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
   ChevronDown,
 } from "lucide-react";
 
@@ -143,9 +142,7 @@ export default function TeacherLayout() {
           </div>
 
           <div className="teacher-topbar-right" ref={profileMenuRef}>
-            <button className="teacher-icon-btn" aria-label="Notifications">
-              <Bell size={17} />
-            </button>
+
 
             <button
               className={`teacher-profile-btn ${profileOpen ? "open" : ""}`}
@@ -181,7 +178,9 @@ export default function TeacherLayout() {
           </div>
         </motion.header>
 
-        <Outlet />
+        <div className="page-wrapper">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

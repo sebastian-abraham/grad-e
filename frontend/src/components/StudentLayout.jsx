@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { LayoutDashboard, LogOut, Menu, X, Bell, ChevronDown } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function StudentLayout() {
@@ -129,9 +129,7 @@ export default function StudentLayout() {
           </div>
 
           <div className="teacher-topbar-right" ref={profileMenuRef}>
-            <button className="teacher-icon-btn" aria-label="Notifications">
-              <Bell size={17} />
-            </button>
+
 
             <button
               className={`teacher-profile-btn ${profileOpen ? "open" : ""}`}
@@ -167,7 +165,9 @@ export default function StudentLayout() {
           </div>
         </motion.header>
 
-        <Outlet />
+        <div className="page-wrapper">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

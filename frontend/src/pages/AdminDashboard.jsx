@@ -57,7 +57,7 @@ export default function AdminDashboard() {
   if (loading) return <AdminDashboardSkeleton />;
 
   return (
-    <section className="teacher-dashboard">
+    <section className="admin-page-content" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
       {/* ── Toolbar ── */}
       <motion.div className="teacher-dashboard-toolbar" {...fade()}>
