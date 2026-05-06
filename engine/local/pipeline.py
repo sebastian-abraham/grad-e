@@ -14,6 +14,10 @@ class LocalPipelineManager:
     def run_pipeline(self, questions_list, student_pdfs=None):
         run_id = uuid.uuid4().hex[:6]  # Generates unique ID to prevent Byaldi crashes
 
+        os.makedirs(f"{self.crops_dir}/golden", exist_ok=True)
+        os.makedirs(f"{self.crops_dir}/students", exist_ok=True)
+        os.makedirs(self.reports_dir, exist_ok=True)
+
         # ==========================================
         # PHASE 1: BATCH EXTRACTION (COLPALI)
         # ==========================================
@@ -29,6 +33,10 @@ class LocalPipelineManager:
         ak_path = f"{self.inputs_dir}/answer_key.pdf"
         idx_key_name = f"idx_key_{run_id}"
         if os.path.exists(ak_path):
+            indexer.unload_model()
+            del indexer
+            indexer = LocalColPaliIndexer(storage_dir=self.crops_dir)
+            indexer.load_model()
             indexer.create_index(ak_path, idx_key_name)
 
         for q in questions_list:
