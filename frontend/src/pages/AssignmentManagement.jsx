@@ -93,7 +93,7 @@ export default function AssignmentManagement() {
         transition={{ duration: 0.25 }}
         style={{ display: "grid", gap: 8 }}
       >
-        <p style={{ margin: 0, fontSize: 10, letterSpacing: "0.16em", color: "#8f7a67", textTransform: "uppercase", fontWeight: 800 }}>
+        <p style={{ margin: 0, fontSize: 10, letterSpacing: "0.16em", color: "var(--accent-strong)", textTransform: "uppercase", fontWeight: 800 }}>
           Academic Authority · Curriculum
         </p>
         <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.06, color: "#232b37" }}>Global Assignments</h1>
@@ -263,12 +263,12 @@ export default function AssignmentManagement() {
         </div>
 
         <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
-          <div style={{ border: "1px solid #efdfd3", background: "#f8eee7", borderRadius: 14, padding: 12 }}>
-            <h4 style={{ margin: "0 0 10px", fontSize: 12, color: "#5e5044", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <div style={{ border: "1px solid var(--line)", background: "#F8FAFC", borderRadius: 14, padding: 12 }}>
+            <h4 style={{ margin: "0 0 10px", fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Status Overview
             </h4>
 
-            <div style={{ borderRadius: 12, background: "#fff", border: "1px solid #efe3da", padding: 10, marginBottom: 8 }}>
+            <div style={{ borderRadius: 12, background: "#fff", border: "1px solid var(--line)", padding: 10, marginBottom: 8 }}>
               <div style={{ color: "#8c98a7", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>Unassigned Courses</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
                 <strong style={{ fontSize: 24, color: "#c0602b" }}>{Math.max(classes.length - assignments.length, 0)}</strong>
@@ -276,7 +276,7 @@ export default function AssignmentManagement() {
               </div>
             </div>
 
-            <div style={{ borderRadius: 12, background: "#fff", border: "1px solid #efe3da", padding: 10 }}>
+            <div style={{ borderRadius: 12, background: "#fff", border: "1px solid var(--line)", padding: 10 }}>
               <div style={{ color: "#8c98a7", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>Total Faculty</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
                 <strong style={{ fontSize: 24, color: "#2d3947" }}>{overview.totalFaculty}</strong>

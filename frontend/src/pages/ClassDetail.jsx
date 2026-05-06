@@ -238,7 +238,7 @@ function DroppableColumn({
                     }}
                   >
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center", background: "#f3e7dd", color: "#9b5f2f", fontSize: 10, fontWeight: 700 }}>
+                      <span style={{ width: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center", background: "linear-gradient(135deg, #6366F1, #8B5CF6)", color: "#fff", fontSize: 10, fontWeight: 700 }}>
                         {(student.displayName || student.email || "S")
                           .split(" ")
                           .map((s) => s[0])

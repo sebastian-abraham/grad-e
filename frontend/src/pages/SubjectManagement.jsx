@@ -73,7 +73,7 @@ export default function SubjectManagement() {
           onChange={(e) => setName(e.target.value)}
           style={{ padding: "12px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", width: "300px", fontSize: "14px" }}
         />
-        <button type="submit" style={{ backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "12px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
+        <button type="submit" style={{ backgroundColor: "#6366F1", color: "#fff", border: "none", padding: "12px 20px", borderRadius: "12px", cursor: "pointer", fontWeight: "700", boxShadow: "0 4px 14px rgba(99, 102, 241, 0.3)" }}>
           Create Subject
         </button>
       </form>

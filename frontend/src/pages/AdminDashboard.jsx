@@ -34,33 +34,33 @@ export default function AdminDashboard() {
   };
 
   const statCards = [
-    { id: "teachers", title: "Total Teachers", value: stats.teachers, icon: <Users size={17} color="#6b7481" />, link: "/admin/users", status: "Graded", meta: "User accounts" },
-    { id: "students", title: "Total Students", value: stats.students, icon: <Users size={17} color="#6b7481" />, link: "/admin/users", status: "Sheets Uploaded", meta: "Student profiles" },
-    { id: "classes", title: "Total Classes", value: stats.classes, icon: <GraduationCap size={17} color="#6b7481" />, link: "/admin/classes", status: "Setup Complete", meta: "Active classes" },
-    { id: "subjects", title: "Total Subjects", value: stats.subjects, icon: <BookOpen size={17} color="#6b7481" />, link: "/admin/subjects", status: "Draft", meta: "Subject catalog" },
+    { id: "teachers", title: "Total Teachers", value: stats.teachers, icon: <Users size={17} color="#64748B" />, link: "/admin/users", status: "Graded", meta: "User accounts" },
+    { id: "students", title: "Total Students", value: stats.students, icon: <Users size={17} color="#64748B" />, link: "/admin/users", status: "Sheets Uploaded", meta: "Student profiles" },
+    { id: "classes", title: "Total Classes", value: stats.classes, icon: <GraduationCap size={17} color="#64748B" />, link: "/admin/classes", status: "Setup Complete", meta: "Active classes" },
+    { id: "subjects", title: "Total Subjects", value: stats.subjects, icon: <BookOpen size={17} color="#64748B" />, link: "/admin/subjects", status: "Draft", meta: "Subject catalog" },
   ];
 
   const quickActions = [
-    { id: "users", title: "Manage Users", link: "/admin/users", icon: <Users size={17} color="#6b7481" /> },
-    { id: "classes", title: "Manage Classes", link: "/admin/classes", icon: <GraduationCap size={17} color="#6b7481" /> },
-    { id: "subjects", title: "Manage Subjects", link: "/admin/subjects", icon: <BookOpen size={17} color="#6b7481" /> },
-    { id: "assignments", title: "Manage Assignments", link: "/admin/assignments", icon: <ClipboardList size={17} color="#6b7481" /> },
+    { id: "users", title: "Manage Users", link: "/admin/users", icon: <Users size={17} color="#64748B" /> },
+    { id: "classes", title: "Manage Classes", link: "/admin/classes", icon: <GraduationCap size={17} color="#64748B" /> },
+    { id: "subjects", title: "Manage Subjects", link: "/admin/subjects", icon: <BookOpen size={17} color="#64748B" /> },
+    { id: "assignments", title: "Manage Assignments", link: "/admin/assignments", icon: <ClipboardList size={17} color="#64748B" /> },
   ];
 
   const getStatusColor = (status) => {
     switch (status) {
       case "Draft":
-        return { bg: "#eef0f3", text: "#5a6675" };
+        return { bg: "#F1F5F9", text: "#475569" };
       case "Setup Complete":
-        return { bg: "#f8d58f", text: "#8a5203" };
+        return { bg: "#FEF3C7", text: "#92400E" };
       case "Sheets Uploaded":
-        return { bg: "#8fddb5", text: "#065f46" };
+        return { bg: "#D1FAE5", text: "#065F46" };
       case "Processing":
-        return { bg: "#f5bb8d", text: "#9a4600" };
+        return { bg: "#FFEDD5", text: "#9A3412" };
       case "Graded":
-        return { bg: "#54b67e", text: "#ffffff" };
+        return { bg: "#6366F1", text: "#FFFFFF" };
       default:
-        return { bg: "#eef0f3", text: "#5a6675" };
+        return { bg: "#F1F5F9", text: "#475569" };
     }
   };
 
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
             >
               <Link to={item.link} className="teacher-exam-card">
                 <div className="teacher-exam-top">
-                  <span className="teacher-chip" style={{ backgroundColor: "#eef0f3", color: "#5a6675" }}>
+                  <span className="teacher-chip" style={{ backgroundColor: "#F1F5F9", color: "#475569" }}>
                     ACTION
                   </span>
                   {item.icon}

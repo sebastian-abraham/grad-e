@@ -37,7 +37,7 @@ const panel = {
   backgroundColor: "#fff",
   border: "1px solid var(--line)",
   borderRadius: "16px",
-  boxShadow: "0 10px 28px rgba(42, 56, 74, 0.06)",
+  boxShadow: "var(--shadow-soft)",
 };
 
 export default function ExamDetail() {

@@ -113,7 +113,7 @@ export default function ClassManagement() {
       <div
         style={{
           border: "1px solid var(--line)",
-          background: "#f6eeea",
+          background: "#FFFFFF",
           borderRadius: 16,
           padding: 10,
           display: "flex",
@@ -193,8 +193,8 @@ export default function ClassManagement() {
                   marginTop: 4,
                   textDecoration: "none",
                   borderRadius: 999,
-                  border: "1px solid rgba(46, 86, 190, 0.3)",
-                  background: "rgba(62, 101, 204, 0.1)",
+                  border: "1px solid rgba(99, 102, 241, 0.25)",
+                  background: "rgba(99, 102, 241, 0.08)",
                   color: "var(--accent-strong)",
                   fontWeight: 700,
                   fontSize: 12,

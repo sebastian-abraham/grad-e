@@ -172,16 +172,17 @@ export default function UserManagement() {
         style={{
           border: "1px solid var(--line)",
           borderRadius: 16,
-          background: "#f6eeea",
+          background: "#FFFFFF",
           padding: 10,
           display: "flex",
           justifyContent: "space-between",
           gap: 10,
           flexWrap: "wrap",
           alignItems: "center",
+          boxShadow: "var(--shadow-soft)",
         }}
       >
-        <div style={{ display: "inline-flex", gap: 6, background: "#efe6e1", borderRadius: 999, padding: 4 }}>
+        <div style={{ display: "inline-flex", gap: 6, background: "#F1F5F9", borderRadius: 999, padding: 4 }}>
           {roleTabs.map((role) => (
             <button
               key={role}
@@ -234,7 +235,7 @@ export default function UserManagement() {
         style={{ border: "1px solid var(--line)", borderRadius: 16, overflow: "hidden", background: "#fff" }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-          <thead style={{ background: "#efe3db", color: "#677281", fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          <thead style={{ background: "#F1F5F9", color: "#64748B", fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase" }}>
             <tr>
               <th style={{ padding: "12px 14px" }}>Name</th>
               <th style={{ padding: "12px 14px" }}>Email Address</th>
@@ -274,8 +275,8 @@ export default function UserManagement() {
                             width: 30,
                             height: 30,
                             borderRadius: 999,
-                            background: "#f2e2d8",
-                            color: "#98521b",
+                            background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
+                            color: "#fff",
                             display: "grid",
                             placeItems: "center",
                             fontWeight: 700,
@@ -298,8 +299,8 @@ export default function UserManagement() {
                         style={{
                           display: "inline-flex",
                           borderRadius: 999,
-                          background: "#f4e7df",
-                          color: "#734f3e",
+                          background: "rgba(99, 102, 241, 0.08)",
+                          color: "#4F46E5",
                           padding: "4px 10px",
                           fontSize: 11,
                           fontWeight: 600,
