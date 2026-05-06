@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -18,7 +19,7 @@ export default function ClassManagement() {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/classes`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/classes`);
       const data = await res.json();
       setClasses(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -32,7 +33,7 @@ export default function ClassManagement() {
     e.preventDefault();
     if (!name.trim()) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/classes`, {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/classes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),

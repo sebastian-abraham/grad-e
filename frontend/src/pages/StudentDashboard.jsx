@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -17,7 +18,7 @@ export default function StudentDashboard() {
   const fetchExams = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/dashboard/${currentUser._id}`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/student/dashboard/${currentUser._id}`);
       const data = await res.json();
       setExams(data);
     } catch (error) {

@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -20,10 +21,10 @@ export default function AssignmentManagement() {
     try {
       setLoading(true);
       const [assignRes, classRes, subRes, teacherRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/assignments`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/classes`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/subjects`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/users?role=teacher`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/assignments`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/classes`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/subjects`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/users?role=teacher`),
       ]);
 
       setAssignments(await assignRes.json());
@@ -42,7 +43,7 @@ export default function AssignmentManagement() {
     if (!formData.classId || !formData.subjectId || !formData.teacherId) return;
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/assignments`, {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -63,7 +64,7 @@ export default function AssignmentManagement() {
   const handleDelete = async (id) => {
     if (!window.confirm("Remove this assignment?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/assignments/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/assignments/${id}`, { method: "DELETE" });
       if (res.ok) fetchData();
     } catch (error) {
       console.error(error);

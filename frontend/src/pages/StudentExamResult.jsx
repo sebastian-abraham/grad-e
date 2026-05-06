@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, AlertCircle, Award } from "lucide-react";
@@ -22,8 +23,8 @@ export default function StudentExamResult() {
     try {
       setLoading(true);
       const [exRes, subRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions/${subId}`)
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions/${subId}`)
       ]);
       
       const exData = await exRes.json();

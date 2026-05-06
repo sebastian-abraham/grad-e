@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { BookOpen, Plus, FileEdit, Trash2, X } from "lucide-react";
@@ -15,7 +16,7 @@ export default function SubjectManagement() {
   const fetchSubjects = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/subjects`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/subjects`);
       const data = await res.json();
       setSubjects(data);
     } catch (error) {
@@ -29,7 +30,7 @@ export default function SubjectManagement() {
     e.preventDefault();
     if (!name.trim()) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/subjects`, {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/subjects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name })
@@ -49,7 +50,7 @@ export default function SubjectManagement() {
   const handleDelete = async (id) => {
     if (!confirm("Delete this subject?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/subjects/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/subjects/${id}`, { method: "DELETE" });
       if (res.ok) fetchSubjects();
     } catch (error) {
       console.error(error);

@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -20,7 +21,7 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/stats`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/admin/stats`);
       if (res.ok) {
         const data = await res.json();
         setStats(data);

@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
@@ -22,9 +23,9 @@ export default function ClassDetail() {
     try {
       setLoading(true);
       const [clsRes, usersRes, assignRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/users?role=student`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/assignments`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/users?role=student`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/assignments`),
       ]);
 
       const classData = await clsRes.json();
@@ -47,13 +48,13 @@ export default function ClassDetail() {
   const updateRosterOnBackend = async (studentId, target) => {
     try {
       if (target === "roster") {
-        await fetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}/students`, {
+        await apiFetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}/students`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ studentIds: [studentId] }),
         });
       } else {
-        await fetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}/students/${studentId}`, {
+        await apiFetch(`${import.meta.env.VITE_API_URL}/api/classes/${id}/students/${studentId}`, {
           method: "DELETE",
         });
       }

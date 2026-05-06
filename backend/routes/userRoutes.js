@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
+const { verifyToken, authorizeRoles } = require("../middlewares/authMiddleware");
 
 // POST /api/users/login
 // Called after Firebase Google login.
@@ -38,10 +39,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ------- Admin routes (no auth middleware yet) -------
+// ------- Admin routes (protected) -------
 
 // POST /api/users — Create user with email + role
-router.post("/", async (req, res) => {
+router.post("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
   try {
     const { email, role } = req.body;
 
@@ -62,7 +63,7 @@ router.post("/", async (req, res) => {
 });
 
 // GET /api/users — List all users with optional filtering
-router.get("/", async (req, res) => {
+router.get("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
   try {
     const { role, search } = req.query;
     let query = {};
@@ -83,7 +84,7 @@ router.get("/", async (req, res) => {
 });
 
 // PUT /api/users/:id — Update user
-router.put("/:id", async (req, res) => {
+router.put("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
   try {
     const { role, displayName } = req.body;
     const user = await User.findByIdAndUpdate(
@@ -103,7 +104,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE /api/users/:id — Remove user
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
 

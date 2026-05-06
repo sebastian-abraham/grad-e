@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -27,7 +28,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(
+      const res = await apiFetch(
         `${import.meta.env.VITE_API_URL}/api/users?role=${activeTab}&search=${search}`
       );
       const data = await res.json();
@@ -44,7 +45,7 @@ export default function UserManagement() {
     try {
       if (editingUserId) {
         // Edit User
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${editingUserId}`, {
+        const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/users/${editingUserId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ role: formData.role }) 
@@ -60,7 +61,7 @@ export default function UserManagement() {
         }
       } else {
         // Add User
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
+        const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/users`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -105,7 +106,7 @@ export default function UserManagement() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/users/${id}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("User deleted successfully");
         setIsDeleteModalOpen(false);

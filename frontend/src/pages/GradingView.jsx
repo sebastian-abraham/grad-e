@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -30,9 +31,9 @@ export default function GradingView() {
     try {
       setLoading(true);
       const [exRes, subRes, allRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions/${subId}`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions`)
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions/${subId}`),
+        apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions`)
       ]);
       
       const exData = await exRes.json();
@@ -92,7 +93,7 @@ export default function GradingView() {
 
   const confirmGrade = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions/${subId}/grade`, {
+      const response = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${id}/submissions/${subId}/grade`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ score, feedback })

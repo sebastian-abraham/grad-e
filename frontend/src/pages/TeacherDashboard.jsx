@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiFetch";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -18,7 +19,7 @@ export default function TeacherDashboard() {
   const fetchExams = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/exams?teacherId=${currentUser._id}`);
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams?teacherId=${currentUser._id}`);
       const data = await res.json();
       setExams(data);
     } catch (error) {
