@@ -40,10 +40,85 @@ export default function GradingView() {
       const subData = await subRes.json();
       const allData = await allRes.json();
 
+      const mergeFeedback = (rawFeedback, criteria) => {
+        if (!rawFeedback || !criteria) return rawFeedback;
+        
+        const mergedMap = {};
+        const unmapped = [];
+        
+        rawFeedback.forEach(item => {
+          let baseNumberMatch = item.questionNumber.match(/\d+/);
+          if (!baseNumberMatch) {
+            unmapped.push(item);
+            return;
+          }
+          let baseNumber = baseNumberMatch[0];
+          
+          let criteriaMatch = criteria.find(c => {
+            let critBase = c.questionNumber.match(/\d+/);
+            return critBase && critBase[0] === baseNumber;
+          });
+          
+          if (!criteriaMatch) {
+            unmapped.push(item);
+            return;
+          }
+
+          if (!mergedMap[baseNumber]) {
+            mergedMap[baseNumber] = {
+              ...item,
+              questionNumber: criteriaMatch.questionNumber,
+              prompt: criteriaMatch.prompt,
+              maxPoints: criteriaMatch.marks,
+              pointsAwarded: 0,
+              teacherFeedback: "",
+              status: "",
+              flags: []
+            };
+          }
+          
+          let current = mergedMap[baseNumber];
+          current.pointsAwarded += (item.pointsAwarded || 0);
+          if (item.flags && item.flags.length > 0) {
+            current.flags = [...new Set([...(current.flags || []), ...item.flags])];
+          }
+          
+          if (item.teacherFeedback) {
+            if (current.teacherFeedback) current.teacherFeedback += "\n\n";
+            if (item.questionNumber !== criteriaMatch.questionNumber) {
+               current.teacherFeedback += `[Part ${item.questionNumber}]: ${item.teacherFeedback}`;
+            } else {
+               current.teacherFeedback += item.teacherFeedback;
+            }
+          }
+        });
+
+        Object.values(mergedMap).forEach(item => {
+          if (item.pointsAwarded >= item.maxPoints) item.status = "correct";
+          else if (item.pointsAwarded === 0) item.status = "incorrect";
+          else item.status = "partial";
+        });
+
+        const mergedList = [...Object.values(mergedMap), ...unmapped];
+        
+        mergedList.sort((a, b) => {
+          const idxA = criteria.findIndex(c => c.questionNumber === a.questionNumber);
+          const idxB = criteria.findIndex(c => c.questionNumber === b.questionNumber);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          return 0;
+        });
+
+        return mergedList;
+      };
+
+      const finalFeedback = mergeFeedback(subData.feedback || [], exData.criteria);
+
       setExam(exData);
       setSubmission(subData);
-      setFeedback(subData.feedback || []);
-      setScore(subData.score || 0);
+      setFeedback(finalFeedback);
+      
+      const newScore = finalFeedback.reduce((sum, item) => sum + (item.pointsAwarded || 0), 0);
+      setScore(Math.min(newScore, exData.totalMarks));
       setAllSubmissions(allData);
     } catch (e) {
       console.error(e);
@@ -64,7 +139,7 @@ export default function GradingView() {
     const updated = [...feedback];
     let validPoints = newPoints;
     
-    if (validPoints > updated[idx].maxPoints) {
+    if (updated[idx].maxPoints > 0 && validPoints > updated[idx].maxPoints) {
       validPoints = updated[idx].maxPoints;
       toast.error(`Marks cannot exceed ${updated[idx].maxPoints} for this question.`);
     }
@@ -90,6 +165,14 @@ export default function GradingView() {
     updated[idx].teacherFeedback = newText;
     setFeedback(updated);
   };
+
+  useEffect(() => {
+    const textareas = document.querySelectorAll("textarea.auto-resize");
+    textareas.forEach(t => {
+      t.style.height = "auto";
+      t.style.height = t.scrollHeight + "px";
+    });
+  }, [feedback]);
 
   const confirmGrade = async () => {
     try {
@@ -208,16 +291,31 @@ export default function GradingView() {
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <input 
                         type="number" 
-                        min="0" max={fb.maxPoints} 
-                        value={fb.pointsAwarded}
+                        min="0" 
+                        value={fb.pointsAwarded === null ? "" : fb.pointsAwarded}
                         onChange={(e) => {
-                          const raw = parseFloat(e.target.value) || 0;
-                          const clamped = Math.min(Math.max(0, raw), fb.maxPoints);
-                          handleScoreChange(idx, clamped);
+                          const val = e.target.value;
+                          const raw = val === "" ? 0 : parseFloat(val);
+                          handleScoreChange(idx, raw);
                         }}
                         style={{ width: "60px", padding: "6px", borderRadius: "6px", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold", fontSize: "16px", color: "#0f172a" }}
                       />
-                      <span style={{ color: "#64748b", fontWeight: "600" }}>/ {fb.maxPoints}</span>
+                      <span style={{ color: "#64748b", fontWeight: "600", margin: "0 4px" }}>/</span>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        value={fb.maxPoints === null ? "" : fb.maxPoints}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const newMax = val === "" ? 0 : parseFloat(val);
+                          const updated = [...feedback];
+                          updated[idx].maxPoints = newMax;
+                          setFeedback(updated);
+                          handleScoreChange(idx, updated[idx].pointsAwarded);
+                        }}
+                        style={{ width: "60px", padding: "6px", borderRadius: "6px", border: "1px dashed #cbd5e1", textAlign: "center", fontWeight: "600", fontSize: "14px", color: "#64748b", backgroundColor: "transparent" }}
+                        title="Edit Max Points"
+                      />
                     </div>
                   </div>
 
@@ -230,9 +328,22 @@ export default function GradingView() {
                   <div style={{ marginBottom: "12px" }}>
                     <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", marginBottom: "4px" }}>AI FEEDBACK & OVERRIDE</div>
                     <textarea 
+                      className="auto-resize"
                       value={fb.teacherFeedback}
-                      onChange={(e) => handleFeedbackChange(idx, e.target.value)}
-                      style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", minHeight: "80px", resize: "vertical", fontSize: "14px", lineHeight: "1.5", color: "#334155" }}
+                      onChange={(e) => {
+                        e.target.style.height = "auto";
+                        e.target.style.height = e.target.scrollHeight + "px";
+                        handleFeedbackChange(idx, e.target.value);
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.height = "auto";
+                        e.target.style.height = e.target.scrollHeight + "px";
+                      }}
+                      style={{ 
+                        width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", 
+                        minHeight: "80px", resize: "none", overflow: "hidden", fontSize: "14px", 
+                        lineHeight: "1.5", color: "#334155", boxSizing: "border-box" 
+                      }}
                     />
                   </div>
                 </div>

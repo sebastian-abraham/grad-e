@@ -30,6 +30,83 @@ export default function StudentExamResult() {
       const exData = await exRes.json();
       const subData = await subRes.json();
 
+      const mergeFeedback = (rawFeedback, criteria) => {
+        if (!rawFeedback || !criteria) return rawFeedback;
+        
+        const mergedMap = {};
+        const unmapped = [];
+        
+        rawFeedback.forEach(item => {
+          let baseNumberMatch = item.questionNumber.match(/\d+/);
+          if (!baseNumberMatch) {
+            unmapped.push(item);
+            return;
+          }
+          let baseNumber = baseNumberMatch[0];
+          
+          let criteriaMatch = criteria.find(c => {
+            let critBase = c.questionNumber.match(/\d+/);
+            return critBase && critBase[0] === baseNumber;
+          });
+          
+          if (!criteriaMatch) {
+            unmapped.push(item);
+            return;
+          }
+
+          if (!mergedMap[baseNumber]) {
+            mergedMap[baseNumber] = {
+              ...item,
+              questionNumber: criteriaMatch.questionNumber,
+              prompt: criteriaMatch.prompt,
+              maxPoints: criteriaMatch.marks,
+              pointsAwarded: 0,
+              teacherFeedback: "",
+              status: "",
+              flags: []
+            };
+          }
+          
+          let current = mergedMap[baseNumber];
+          current.pointsAwarded += (item.pointsAwarded || 0);
+          if (item.flags && item.flags.length > 0) {
+            current.flags = [...new Set([...(current.flags || []), ...item.flags])];
+          }
+          
+          if (item.teacherFeedback) {
+            if (current.teacherFeedback) current.teacherFeedback += "\n\n";
+            if (item.questionNumber !== criteriaMatch.questionNumber) {
+               current.teacherFeedback += `[Part ${item.questionNumber}]: ${item.teacherFeedback}`;
+            } else {
+               current.teacherFeedback += item.teacherFeedback;
+            }
+          }
+        });
+
+        Object.values(mergedMap).forEach(item => {
+          if (item.pointsAwarded >= item.maxPoints) item.status = "correct";
+          else if (item.pointsAwarded === 0) item.status = "incorrect";
+          else item.status = "partial";
+        });
+
+        const mergedList = [...Object.values(mergedMap), ...unmapped];
+        
+        mergedList.sort((a, b) => {
+          const idxA = criteria.findIndex(c => c.questionNumber === a.questionNumber);
+          const idxB = criteria.findIndex(c => c.questionNumber === b.questionNumber);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          return 0;
+        });
+
+        return mergedList;
+      };
+
+      if (subData && subData.feedback) {
+        subData.feedback = mergeFeedback(subData.feedback, exData.criteria);
+        subData.score = subData.feedback.reduce((sum, item) => sum + (item.pointsAwarded || 0), 0);
+        subData.score = Math.min(subData.score, exData.totalMarks);
+      }
+
       setExam(exData);
       setSubmission(subData);
     } catch (e) {

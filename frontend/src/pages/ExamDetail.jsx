@@ -18,6 +18,7 @@ import {
   Upload,
   Users,
   Trash2,
+  PencilLine,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -104,7 +105,7 @@ export default function ExamDetail() {
             </p>
           </div>
 
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <Link
               to={`/teacher/exams/${exam._id}/edit`}
               style={{
@@ -112,28 +113,40 @@ export default function ExamDetail() {
                 background: "#fff",
                 color: "var(--ink)",
                 borderRadius: 999,
-                padding: "10px 16px",
+                padding: "10px 18px",
                 fontWeight: 700,
+                fontSize: 14,
                 cursor: "pointer",
                 textDecoration: "none",
-                display: "inline-block"
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.2s",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
               }}
             >
-              Edit Exam
+              <PencilLine size={16} /> Edit Exam
             </Link>
-            <span
+            <div
               style={{
-                background: "rgba(62, 101, 204, 0.12)",
-                color: "var(--accent-strong)",
-                border: "1px solid rgba(62, 101, 204, 0.24)",
+                background: exam.status === "Graded" ? "#6366F1" : "rgba(62, 101, 204, 0.08)",
+                color: exam.status === "Graded" ? "#fff" : "var(--accent-strong)",
+                border: "1px solid",
+                borderColor: exam.status === "Graded" ? "#6366F1" : "rgba(62, 101, 204, 0.16)",
                 borderRadius: 999,
                 fontSize: 12,
-                fontWeight: 700,
-                padding: "6px 10px",
+                fontWeight: 800,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                padding: "8px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
               }}
             >
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: exam.status === "Graded" ? "#fff" : "var(--accent-strong)" }} />
               {exam.status}
-            </span>
+            </div>
           </div>
         </div>
 
@@ -735,24 +748,9 @@ function SeatingTab({ exam, fetchExam }) {
   return (
     <div style={{ ...panel, padding: 16 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap", marginBottom: 14 }}>
-        <NumberInput label="Rows" value={rows} onChange={(v) => setRows(v)} />
-        <NumberInput label="Columns" value={cols} onChange={(v) => setCols(v)} />
-        <button
-          type="button"
-          onClick={randomizeAssignments}
-          style={{
-            height: 36,
-            borderRadius: 999,
-            border: "1px solid var(--line)",
-            background: "#fff",
-            color: "var(--ink)",
-            fontWeight: 700,
-            padding: "0 14px",
-            cursor: "pointer",
-          }}
-        >
-          Randomize
-        </button>
+        <NumberInput label="Rows" value={rows} onChange={(v) => setRows(Math.min(v, 20))} />
+        <NumberInput label="Columns" value={cols} onChange={(v) => setCols(Math.min(v, 20))} />
+
         <button
           type="button"
           onClick={saveSeating}
@@ -1081,9 +1079,13 @@ function NumberInput({ label, value, onChange }) {
       <input
         type="number"
         min="1"
-        max="30"
+        max="20"
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) => {
+          const val = Number(e.target.value);
+          if (val > 20) return;
+          onChange(val);
+        }}
         style={{
           width: 84,
           height: 36,

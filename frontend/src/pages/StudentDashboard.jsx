@@ -37,7 +37,7 @@ export default function StudentDashboard() {
   }, {});
 
   const getStatusColor = (exam) => {
-    if (exam.status === "Graded" && exam.mySubmission?.score !== undefined) {
+    if (exam.mySubmission?.score !== undefined) {
       return { bg: "#6366F1", text: "#FFFFFF", label: "GRADED" };
     }
     if (exam.status === "Graded" && !exam.mySubmission) {
@@ -53,7 +53,7 @@ export default function StudentDashboard() {
   };
 
   const getActionConfig = (exam) => {
-    const hasResult = exam.status === "Graded" && exam.mySubmission?._id;
+    const hasResult = exam.mySubmission?.score !== undefined && exam.mySubmission?._id;
 
     if (hasResult) {
       return {
