@@ -54,6 +54,11 @@ Managed heavily via `activeTab` states. Include three distinct architectural spa
 - **`SeatingTab`**: Implements a `gridTemplateColumns: repeat(${cols}, 1fr)` dynamic CSS styling grid. Clicks check existing array `assignments` mapping visually translating `onMouseEnter` scale micro-animations. Prevents assigning if all students exhausted.
 - **`OverviewTab`**: Aggregates `Chart.js` via `react-chartjs-2`, counting custom score bucket ranges ("0-20", "21-40", etc.) and rendering a colored `<Bar>` visualization alongside static average/highest metrics.
 
-### 3. Split Grading Review (`src/pages/GradingView.jsx`)
+### 3. Exam Editing & Schema Updates (`src/pages/EditExam.jsx`)
+- **Dedicated Editor Space**: Accessed via the "Edit Exam" button on the Command Hub, this standalone page provides maximum screen real estate for adjusting metadata (name, total marks, subject, class, date) alongside the actual grading schema.
+- **Dynamic Textareas**: The `textarea` components for "Question Prompt" and "Valuation Notes" implement a global `onFocus`/`onChange`/`useEffect` combination scaling `height` relative to `scrollHeight`, preventing inner scrollbars and greatly improving readability for dense AI outputs.
+- **AI Re-generation**: Allows teachers to override the schema entirely using dual dropzones mapped to `/generate-criteria`, identical to the CreateExam step 2 flow.
+
+### 4. Split Grading Review (`src/pages/GradingView.jsx`)
 - **Left Panel**: Injects the base64 `submission.pdfData` directly over an `<iframe src="data:application/pdf;base64,...">` scaling natively to browser rendering engines.
 - **Right Panel**: A scrollable vertical Form looping over `feedback`. Modifying the manual override `pointsAwarded` input triggers `handleScoreChange` cascading automatically shifting the global `.reduce()` aggregation of the final score while contextually painting background cards `ecfdf5` (green/correct) vs `fef2f2` (red/incorrect) instantly communicating logic.

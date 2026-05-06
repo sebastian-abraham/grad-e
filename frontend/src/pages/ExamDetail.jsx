@@ -105,8 +105,8 @@ export default function ExamDetail() {
           </div>
 
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-            <button
-              type="button"
+            <Link
+              to={`/teacher/exams/${exam._id}/edit`}
               style={{
                 border: "1px solid var(--line)",
                 background: "#fff",
@@ -115,25 +115,12 @@ export default function ExamDetail() {
                 padding: "10px 16px",
                 fontWeight: 700,
                 cursor: "pointer",
+                textDecoration: "none",
+                display: "inline-block"
               }}
             >
-              Edit Exam Details
-            </button>
-            <button
-              type="button"
-              style={{
-                border: 0,
-                background: "var(--accent-strong)",
-                color: "#fff",
-                borderRadius: 999,
-                padding: "10px 16px",
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 8px 18px rgba(46, 86, 190, 0.26)",
-              }}
-            >
-              Publish Results
-            </button>
+              Edit Exam
+            </Link>
             <span
               style={{
                 background: "rgba(62, 101, 204, 0.12)",

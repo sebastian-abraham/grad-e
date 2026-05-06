@@ -15,6 +15,7 @@ import TeacherLayout from "./components/TeacherLayout";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import CreateExam from "./pages/CreateExam";
 import ExamDetail from "./pages/ExamDetail";
+import EditExam from "./pages/EditExam";
 import GradingView from "./pages/GradingView";
 
 // Student imports
@@ -99,6 +100,7 @@ function App() {
           <Route index element={<TeacherDashboard />} />
           <Route path="create-exam" element={<CreateExam />} />
           <Route path="exams/:id" element={<ExamDetail />} />
+          <Route path="exams/:id/edit" element={<EditExam />} />
           <Route path="exams/:id/grade/:subId" element={<GradingView />} />
         </Route>
 
