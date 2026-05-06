@@ -1,6 +1,9 @@
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from typing import List, Optional, Annotated
 import os
+from contextlib import asynccontextmanager
+import keyboard
+
 # Disable SSL verification for Hugging Face and other libraries
 os.environ['CURL_CA_BUNDLE'] = ''
 os.environ['PYTHONHTTPSVERIFY'] = '0'
@@ -14,7 +17,44 @@ import glob
 
 from engine.router.logic import GradeRouter
 
-app = FastAPI(title="GRAD-E API", version="1.0")
+# ==========================================
+# 1. THE STEALTH GLOBAL STATE
+# ==========================================
+class ServerState:
+    engine_mode = "cloud" # Start fast for the demo!
+
+def set_mode(new_mode):
+    ServerState.engine_mode = new_mode
+    if new_mode == "local":
+        print("\n🔥 [SERVER OVERRIDE] Engine switched to: LOCAL EDGE (ColPali + Qwen)")
+    elif new_mode == "cloud":
+        print("\n☁️ [SERVER OVERRIDE] Engine switched to: CLOUD (Gemini)")
+    elif new_mode == "auto":
+        print("\n🔄 [SERVER OVERRIDE] Engine switched to: AUTO FAILOVER")
+
+# ==========================================
+# 2. THE BACKGROUND LISTENER LIFESPAN
+# ==========================================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🎧 Booting Stealth Keyboard Listener...")
+    try:
+        # These hotkeys will work even if your terminal is minimized
+        keyboard.add_hotkey('ctrl+shift+l', lambda: set_mode("local"))
+        keyboard.add_hotkey('ctrl+shift+c', lambda: set_mode("cloud"))
+        keyboard.add_hotkey('ctrl+shift+a', lambda: set_mode("auto"))
+        print("✅ Stealth Mode active: Use Ctrl+Shift+C (Cloud), Ctrl+Shift+L (Local), Ctrl+Shift+A (Auto)")
+    except Exception as e:
+        print(f"⚠️ Keyboard hook failed (Try running terminal as Admin): {e}")
+    
+    yield # Let the server run
+    
+    keyboard.unhook_all() # Clean up on shutdown
+
+# ==========================================
+# 3. FASTAPI APP INIT
+# ==========================================
+app = FastAPI(title="GRAD-E API", version="1.0", lifespan=lifespan)
 router = GradeRouter()
 
 def save_upload(uploaded_file: UploadFile, destination_path: str):
@@ -65,14 +105,19 @@ async def grade_batch(
         save_upload(script, file_path)
         saved_files.append(file_path)
         
-    # Send the grading workload to the background
-    background_tasks.add_task(router.route_and_grade, exam_id, saved_files)
+    # Grab the current stealth mode from memory
+    current_mode = ServerState.engine_mode
+    print(f"\n⚙️ Dispatching Background Task in mode: {current_mode.upper()}")
+        
+    # Send the grading workload and the CURRENT MODE to the background
+    background_tasks.add_task(router.route_and_grade, exam_id, saved_files, current_mode)
     
     return {
         "status": "processing",
         "job_id": f"job_{uuid.uuid4().hex[:8]}",
         "batch_size": len(saved_files),
-        "message": "Batch received. Routing to primary cloud cluster..."
+        "engine_mode": current_mode,
+        "message": f"Batch received. Routing to {current_mode} cluster..."
     }
 
 @app.get("/api/v1/exam/{exam_id}/reports")
