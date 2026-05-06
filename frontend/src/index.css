@@ -144,6 +144,17 @@ body,
   overflow-x: hidden;
   overflow-y: auto;
   background: var(--panel-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Page Wrapper ─── */
+.page-wrapper {
+  padding: 32px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1; /* Allow to expand */
 }
 
 .teacher-backdrop {

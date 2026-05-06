@@ -17,6 +17,7 @@ import {
   Settings,
   Upload,
   Users,
+  Trash2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -196,9 +197,12 @@ export default function ExamDetail() {
 
 function AnswerSheetsTab({ exam, fetchExam }) {
   const [submissions, setSubmissions] = useState([]);
+  const [deletingId, setDeletingId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [classStudents, setClassStudents] = useState([]);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [paperToDelete, setPaperToDelete] = useState(null);
 
   useEffect(() => {
     fetchSubmissions();
@@ -249,6 +253,44 @@ function AnswerSheetsTab({ exam, fetchExam }) {
       fetchSubmissions();
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleDeleteSubmission = (subId) => {
+    setPaperToDelete(subId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!paperToDelete) return;
+    const subId = paperToDelete;
+    setDeletingId(subId);
+    setIsDeleteModalOpen(false);
+
+    // Optimistic Update: Remove from local UI immediately
+    setSubmissions((prev) => prev.filter((s) => s._id !== subId));
+
+    try {
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions/${subId}`, {
+        method: "DELETE",
+      });
+      
+      if (!res.ok) {
+        throw new Error("Delete failed");
+      }
+
+      toast.success("Paper deleted successfully");
+      // Re-fetch to ensure sync and update metrics
+      fetchSubmissions();
+      fetchExam(); 
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete paper");
+      // Revert on failure
+      fetchSubmissions();
+    } finally {
+      setDeletingId(null);
+      setPaperToDelete(null);
     }
   };
 
@@ -476,6 +518,28 @@ function AnswerSheetsTab({ exam, fetchExam }) {
                           <Eye size={14} /> Review
                         </Link>
                       ) : null}
+                      <button
+                        onClick={() => handleDeleteSubmission(sub._id)}
+                        disabled={deletingId === sub._id}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 32,
+                          height: 32,
+                          borderRadius: "50%",
+                          border: "1px solid #fee2e2",
+                          background: "#fef2f2",
+                          color: "#ef4444",
+                          cursor: deletingId === sub._id ? "not-allowed" : "pointer",
+                          marginLeft: 8,
+                          transition: "all 0.2s",
+                          opacity: deletingId === sub._id ? 0.5 : 1,
+                        }}
+                        title="Delete Paper"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </motion.tr>
                 ))
@@ -490,6 +554,85 @@ function AnswerSheetsTab({ exam, fetchExam }) {
         <MetricCard title="Anomaly Detection" value={`${unassigned}`} subtitle="Unlinked sheets" color="var(--accent)" />
         <MetricCard title="Average Score" value={`${avgScore}`} subtitle="Class performance" color="var(--accent-strong)" />
       </div>
+
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(19, 26, 38, 0.48)",
+              display: "grid",
+              placeItems: "center",
+              zIndex: 100,
+              padding: 16,
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              style={{
+                width: "min(380px, 100%)",
+                borderRadius: 20,
+                background: "#fff",
+                padding: 24,
+                textAlign: "center",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  background: "#fef2f2",
+                  color: "#dc2626",
+                  borderRadius: 999,
+                  display: "grid",
+                  placeItems: "center",
+                  margin: "0 auto 18px",
+                }}
+              >
+                <Trash2 size={32} />
+              </div>
+              <h2 style={{ margin: "0 0 8px", fontSize: 22, color: "#111827", fontWeight: 700 }}>Delete Paper?</h2>
+              <p style={{ margin: "0 0 28px", color: "#6b7280", fontSize: 15, lineHeight: 1.5 }}>
+                Are you sure you want to delete this paper? This action cannot be undone and the data will be lost.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 12,
+                    background: "#fff",
+                    padding: "12px",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    color: "#374151",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  style={{
+                    border: 0,
+                    borderRadius: 12,
+                    background: "#dc2626",
+                    color: "#fff",
+                    padding: "12px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Delete Paper
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

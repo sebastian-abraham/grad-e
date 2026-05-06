@@ -442,4 +442,14 @@ router.put("/:id/submissions/:subId/grade", async (req, res) => {
   }
 });
 
+// DELETE /api/exams/:id/submissions/:subId
+router.delete("/:id/submissions/:subId", async (req, res) => {
+  try {
+    await Submission.findByIdAndDelete(req.params.subId);
+    return res.json({ message: "Submission deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

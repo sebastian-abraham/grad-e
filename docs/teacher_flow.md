@@ -38,6 +38,8 @@ Represents an individual student's test uploaded against an Exam.
 ### Exam Submissions CRUD
 - `POST /:id/submissions`: Takes bulk array of `sheets`, casting to Base64 strings and running `Submission.insertMany()`.
 - `GET /:id/submissions`: Intentionally strips `pdfData` by invoking `toObject()` and explicitly dropping the heavy payload via `delete obj.pdfData` to prevent crashing the frontend browser on list renders.
+- `DELETE /:id/submissions/:subId`: Removes a specific submission from the database.
+- **Frontend Delete**: `ExamDetail.jsx` now includes a `handleDeleteSubmission` function that confirms deletion and updates the local state, enabling teachers to remove incorrectly uploaded papers.
 
 ## Frontend UI Components
 
