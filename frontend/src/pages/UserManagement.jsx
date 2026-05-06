@@ -48,7 +48,7 @@ export default function UserManagement() {
         const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/users/${editingUserId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: formData.role }) 
+          body: JSON.stringify({ role: formData.role, displayName: formData.name }) 
         });
         if (res.ok) {
           setIsModalOpen(false);
@@ -104,7 +104,6 @@ export default function UserManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
       const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/users/${id}`, { method: "DELETE" });
       if (res.ok) {
@@ -395,26 +394,32 @@ export default function UserManagement() {
               {editingUserId ? "Edit" : "Add"} {formData.role}
             </h2>
             <form onSubmit={handleSaveUser} style={{ display: "grid", gap: 12 }}>
-              {!editingUserId && (
-                <input
-                  type="text"
-                  placeholder="Display name"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  style={{ height: 40, borderRadius: 10, border: "1px solid #d7dce4", padding: "0 12px" }}
-                />
-              )}
-              {!editingUserId && (
-                <input
-                  type="email"
-                  placeholder="Email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  style={{ height: 40, borderRadius: 10, border: "1px solid #d7dce4", padding: "0 12px" }}
-                />
-              )}
+              <input
+                type="text"
+                placeholder="Display name"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                style={{ height: 40, borderRadius: 10, border: "1px solid #d7dce4", padding: "0 12px" }}
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                required
+                disabled={!!editingUserId}
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                style={{ height: 40, borderRadius: 10, border: "1px solid #d7dce4", padding: "0 12px", background: editingUserId ? "#f0f2f5" : "#fff" }}
+              />
+              <select
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                style={{ height: 40, borderRadius: 10, border: "1px solid #d7dce4", padding: "0 12px", background: "#fff", color: "#252d39" }}
+              >
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+                <option value="admin">Admin</option>
+              </select>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
                 <button
@@ -432,6 +437,49 @@ export default function UserManagement() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(19, 26, 38, 0.48)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 60,
+            padding: 16,
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{ width: "min(380px, 100%)", borderRadius: 16, background: "#fff", padding: 24, textAlign: "center" }}
+          >
+            <div style={{ width: 56, height: 56, background: "#fef2f2", color: "#dc2626", borderRadius: 999, display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
+              <Ban size={28} />
+            </div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 20, color: "#111827" }}>Delete User?</h2>
+            <p style={{ margin: "0 0 24px", color: "#6b7280", fontSize: 14 }}>
+              This action cannot be undone. All data associated with this user will be permanently removed from the system.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: "10px", cursor: "pointer", fontWeight: 600, color: "#374151" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(userToDelete)}
+                style={{ border: 0, borderRadius: 10, background: "#dc2626", color: "#fff", padding: "10px", cursor: "pointer", fontWeight: 700 }}
+              >
+                Delete Account
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
