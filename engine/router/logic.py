@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+import time
 from google.genai import types
 
 # Import both engines
@@ -61,9 +62,8 @@ class GradeRouter:
             print(f"❌ [ROUTER ERROR] Cloud Setup Failed: {e}")
             return {"status": "error"}
 
-    def route_and_grade(self, exam_id, student_file_paths):
-        """The Auto-Failover Circuit Breaker."""
-        print(f"\n🔀 [ROUTER] Initiating Batch Grading for {exam_id}...")
+    def route_and_grade(self, exam_id, student_file_paths, mode="auto"):
+        print(f"\n🔀 [ROUTER] Initiating Grading for {exam_id} in {mode.upper()} mode...")
         
         schema_path = f"engine/storage/inputs/{exam_id}/exam_metadata.json"
         qp_path = f"engine/storage/inputs/{exam_id}/question_paper.pdf"
@@ -78,58 +78,85 @@ class GradeRouter:
             metadata = json.load(f)
         questions_list = metadata["questions"]
 
-        ungraded_students = student_file_paths.copy()
+        # Configure Local Pipeline directories just in case it's needed
+        self.local_engine.inputs_dir = f"engine/storage/inputs/{exam_id}"
+        self.local_engine.crops_dir = f"engine/storage/crops/{exam_id}"
+        self.local_engine.reports_dir = reports_dir
+        os.makedirs(f"{self.local_engine.crops_dir}/golden", exist_ok=True)
+        os.makedirs(f"{self.local_engine.crops_dir}/students", exist_ok=True)
 
         # ==========================================
-        # PRIMARY EXECUTION: CLOUD ENGINE
+        # OVERRIDE 1: STRICT LOCAL MODE
         # ==========================================
-        print(f"☁️ [ROUTER] Dispatching {len(ungraded_students)} scripts to Cloud Engine...")
-        
-        try:
+        if mode == "local":
+            print(f"💻 [ROUTER] Explicit LOCAL override active. Handing batch to RTX 5060...")
+            self.local_engine.run_pipeline(questions_list, student_file_paths)
+            print("\n✅ [ROUTER] Local Batch processing complete.")
+            return
+
+        # ==========================================
+        # OVERRIDE 2: STRICT CLOUD MODE
+        # ==========================================
+        elif mode == "cloud":
+            print(f"☁️ [ROUTER] Explicit CLOUD override active. No local failover.")
             for student_path in student_file_paths:
                 student_id = os.path.basename(student_path).replace('.pdf', '')
                 report_path = f"{reports_dir}/{student_id}_report.json"
                 
-                # Call your existing cloud workflow
-                final_report = self.cloud_agent.run_agent_workflow(student_path, qp_path)
-                
-                # Check if it returned your custom error dict or succeeded
-                if "error" in final_report:
-                    raise Exception(final_report["error"])
-                
-                # Save successful cloud report
-                with open(report_path, "w") as f:
-                    json.dump(final_report, f, indent=4)
-                    
-                print(f"✅ [CLOUD] Successfully graded {student_id}")
-                ungraded_students.remove(student_path) # Remove from queue
-
-        except Exception as e:
-            err_str = str(e).upper()
-            if "FATAL" in err_str or "EXHAUSTED" in err_str or "429" in err_str:
-                print(f"\n⚠️ [CIRCUIT BREAKER TRIPPED] Cloud API limits reached.")
-                print(f"⚠️ [ROUTER] Falling back to Local Edge Compute for remaining {len(ungraded_students)} students...")
-            else:
-                print(f"\n⚠️ [ROUTER] Unexpected Cloud Error: {e}")
-                print(f"⚠️ [ROUTER] Initiating Emergency Failover to Local Engine...")
+                print(f"☁️ [ROUTER] Routing {student_id} to Cloud Engine...")
+                try:
+                    final_report = self.cloud_agent.run_agent_workflow(student_path, qp_path)
+                    if "error" in final_report:
+                        raise Exception(final_report["error"])
+                    with open(report_path, "w") as f:
+                        json.dump(final_report, f, indent=4)
+                    print(f"✅ [CLOUD] Successfully graded {student_id}")
+                except Exception as e:
+                    print(f"❌ [CLOUD ERROR] Failed on {student_id}: {e}")
+            print("\n✅ [ROUTER] Cloud Batch processing complete.")
+            return
 
         # ==========================================
-        # SECONDARY EXECUTION: LOCAL ENGINE (FAILOVER)
+        # DEFAULT: AUTO FAILOVER MODE
         # ==========================================
-        if ungraded_students:
-            print(f"\n💻 [ROUTER] Booting Local RTX Pipeline...")
-            
-            # Configure Local Pipeline directories for this specific exam session
-            self.local_engine.inputs_dir = f"engine/storage/inputs/{exam_id}"
-            self.local_engine.crops_dir = f"engine/storage/crops/{exam_id}"
-            self.local_engine.reports_dir = reports_dir
-            
-            os.makedirs(f"{self.local_engine.crops_dir}/golden", exist_ok=True)
-            os.makedirs(f"{self.local_engine.crops_dir}/students", exist_ok=True)
-
-            # Pass ONLY the students that the cloud failed to process
-            # (Note: You'll need to slightly update pipeline.py to accept this specific list 
-            # instead of using glob.glob() to grab everything in the folder)
-            self.local_engine.run_pipeline(questions_list, ungraded_students)
         else:
-            print("\n✅ [ROUTER] Entire batch completed successfully via Cloud.")
+            print(f"🔄 [ROUTER] AUTO mode engaged. Cloud primary with Local failover.")
+            cooldown_until = 0  
+            COOLDOWN_SECONDS = 60  
+
+            for student_path in student_file_paths:
+                student_id = os.path.basename(student_path).replace('.pdf', '')
+                report_path = f"{reports_dir}/{student_id}_report.json"
+                
+                # --- CHECK COOLDOWN TIMER ---
+                current_time = time.time()
+                if current_time < cooldown_until:
+                    remaining_time = int(cooldown_until - current_time)
+                    print(f"💻 [ROUTER] Cloud is in cooldown ({remaining_time}s left). Routing {student_id} to Local Edge...")
+                    self.local_engine.run_pipeline(questions_list, [student_path])
+                    continue
+
+                # --- PRIMARY CLOUD ROUTE ---
+                print(f"☁️ [ROUTER] Routing {student_id} to Cloud Engine...")
+                try:
+                    final_report = self.cloud_agent.run_agent_workflow(student_path, qp_path)
+                    if "error" in final_report:
+                        raise Exception(final_report["error"])
+                    
+                    with open(report_path, "w") as f:
+                        json.dump(final_report, f, indent=4)
+                    print(f"✅ [CLOUD] Successfully graded {student_id}")
+
+                except Exception as e:
+                    err_str = str(e).upper()
+                    print(f"\n⚠️ [ROUTER] Cloud Error on {student_id}: {err_str}")
+                    print(f"⚠️ [CIRCUIT BREAKER] Tripping Cloud Cooldown for {COOLDOWN_SECONDS} seconds...")
+                    
+                    # Activate Cooldown
+                    cooldown_until = time.time() + COOLDOWN_SECONDS
+                    
+                    # Grade the failed student locally
+                    print(f"💻 [ROUTER] Shifting {student_id} to Local Edge...")
+                    self.local_engine.run_pipeline(questions_list, [student_path])
+
+            print("\n✅ [ROUTER] Auto Batch processing complete.")
