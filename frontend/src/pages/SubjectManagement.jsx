@@ -1,14 +1,19 @@
 import { apiFetch } from "../utils/apiFetch";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { motion } from "framer-motion";
-import { BookOpen, Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { BookOpen, Plus, Trash2 } from "lucide-react";
 import { SubjectManagementSkeleton } from "../components/SkeletonUI";
 
 export default function SubjectManagement() {
   const [subjects, setSubjects] = useState([]);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Modal states
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [subjectToDelete, setSubjectToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchSubjects();
@@ -49,16 +54,25 @@ export default function SubjectManagement() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this subject?")) return;
+  const confirmDelete = async () => {
+    if (!subjectToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/subjects/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/subjects/${subjectToDelete._id}`, { method: "DELETE" });
       if (res.ok) {
         fetchSubjects();
         toast.success("Subject removed");
+        setIsDeleteModalOpen(false);
+        setSubjectToDelete(null);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to delete");
       }
     } catch (error) {
       console.error(error);
+      toast.error("An error occurred");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -141,7 +155,10 @@ export default function SubjectManagement() {
                     <button
                       type="button"
                       className="assign-remove-btn"
-                      onClick={() => handleDelete(sub._id)}
+                      onClick={() => {
+                        setSubjectToDelete(sub);
+                        setIsDeleteModalOpen(true);
+                      }}
                     >
                       Delete
                     </button>
@@ -152,6 +169,100 @@ export default function SubjectManagement() {
           </tbody>
         </table>
       </motion.div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(19, 26, 38, 0.48)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 16,
+            }}
+            onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "min(380px, 100%)",
+                borderRadius: 24,
+                background: "#fff",
+                padding: "32px 24px",
+                textAlign: "center",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  background: "#fef2f2",
+                  color: "#dc2626",
+                  borderRadius: 999,
+                  display: "grid",
+                  placeItems: "center",
+                  margin: "0 auto 20px",
+                }}
+              >
+                <Trash2 size={32} />
+              </div>
+              <h2 style={{ margin: "0 0 10px", fontSize: 22, color: "#111827", fontWeight: 800 }}>Delete Subject?</h2>
+              <p style={{ margin: "0 0 28px", color: "#6b7280", fontSize: 15, lineHeight: 1.6 }}>
+                Are you sure you want to remove <strong style={{ color: "#111827" }}>{subjectToDelete?.name}</strong>? 
+                This action cannot be undone.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <button
+                  disabled={isDeleting}
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 14,
+                    background: "#fff",
+                    padding: "12px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    color: "#374151",
+                    fontSize: 14,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={isDeleting}
+                  onClick={confirmDelete}
+                  style={{
+                    border: 0,
+                    borderRadius: 14,
+                    background: "#dc2626",
+                    color: "#fff",
+                    padding: "12px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8
+                  }}
+                >
+                  {isDeleting ? (
+                    <div style={{ width: 16, height: 16, border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+                  ) : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

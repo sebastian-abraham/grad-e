@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Class = require("../models/Class");
 const User = require("../models/User");
+const Assignment = require("../models/Assignment");
 
 // GET /api/classes - List all classes
 router.get("/", async (req, res) => {
@@ -64,10 +65,14 @@ router.put("/:id", async (req, res) => {
 // DELETE /api/classes/:id - Delete class
 router.delete("/:id", async (req, res) => {
   try {
-    const deletedClass = await Class.findByIdAndDelete(req.params.id);
+    const classId = req.params.id;
+    const deletedClass = await Class.findByIdAndDelete(classId);
     if (!deletedClass) return res.status(404).json({ error: "Class not found." });
     
-    return res.json({ message: "Class deleted." });
+    // Also delete all assignments for this class
+    await Assignment.deleteMany({ classId });
+    
+    return res.json({ message: "Class and its assignments deleted." });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

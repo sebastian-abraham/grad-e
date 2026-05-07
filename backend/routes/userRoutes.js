@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
+const Assignment = require("../models/Assignment");
 const { verifyToken, authorizeRoles } = require("../middlewares/authMiddleware");
 
 // POST /api/users/login
@@ -106,13 +107,18 @@ router.put("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
 // DELETE /api/users/:id — Remove user
 router.delete("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
-
+    const userId = req.params.id;
+    const user = await User.findByIdAndDelete(userId);
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
 
-    return res.json({ message: "User deleted." });
+    // Also delete all assignments for this teacher
+    if (user.role === "teacher") {
+      await Assignment.deleteMany({ teacherId: userId });
+    }
+
+    return res.json({ message: "User and their assignments deleted." });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
