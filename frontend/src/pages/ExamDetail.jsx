@@ -206,6 +206,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
   const [isReviewingFlags, setIsReviewingFlags] = useState(false);
   const [isFlagModalOpen, setIsFlagModalOpen] = useState(false);
   const [flagResults, setFlagResults] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const handleReviewFlags = async () => {
     if (!exam.seatingArrangement || !exam.seatingArrangement.assignments || exam.seatingArrangement.assignments.length === 0) {
@@ -221,8 +222,8 @@ function AnswerSheetsTab({ exam, fetchExam }) {
         const a = assignments[i];
         const b = assignments[j];
         if (Math.abs(a.row - b.row) <= 1 && Math.abs(a.col - b.col) <= 1) {
-           const studentAId = a.studentId?._id || a.studentId;
-           const studentBId = b.studentId?._id || b.studentId;
+           const studentAId = String(a.studentId?._id || a.studentId);
+           const studentBId = String(b.studentId?._id || b.studentId);
            if (studentAId && studentBId) {
               adjacentPairs.push([studentAId, studentBId]);
            }
@@ -248,12 +249,13 @@ function AnswerSheetsTab({ exam, fetchExam }) {
       const data = await response.json();
       
       const mappedResults = (data.results || []).map(r => {
-         const studentA = classStudents.find(s => s._id === r.studentA);
-         const studentB = classStudents.find(s => s._id === r.studentB);
+         const studentA = classStudents.find(s => s._id === r.studentA) || submissions.find(s => (s.studentId?._id || s.studentId) === r.studentA)?.studentId;
+         const studentB = classStudents.find(s => s._id === r.studentB) || submissions.find(s => (s.studentId?._id || s.studentId) === r.studentB)?.studentId;
+         
          return {
             ...r,
-            nameA: studentA ? (studentA.displayName || studentA.email) : r.studentA,
-            nameB: studentB ? (studentB.displayName || studentB.email) : r.studentB,
+            nameA: studentA ? (studentA.displayName || studentA.email) : (typeof studentA === 'string' ? studentA : r.studentA),
+            nameB: studentB ? (studentB.displayName || studentB.email) : (typeof studentB === 'string' ? studentB : r.studentB),
          };
       });
       
@@ -273,12 +275,15 @@ function AnswerSheetsTab({ exam, fetchExam }) {
   }, [exam]);
 
   const fetchSubmissions = async () => {
+    setLoading(true);
     try {
       const res = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`);
       const data = await res.json();
       setSubmissions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Fetch submissions error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -520,7 +525,14 @@ function AnswerSheetsTab({ exam, fetchExam }) {
               </tr>
             </thead>
             <tbody>
-              {submissions.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="4" style={{ padding: 40, textAlign: "center" }}>
+                    <div style={{ display: "inline-block", width: 24, height: 24, border: "3px solid rgba(62, 101, 204, 0.2)", borderTopColor: "var(--accent-strong)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+                    <p style={{ marginTop: 10, color: "var(--muted)", fontWeight: 600, fontSize: 13 }}>Fetching scanned batches...</p>
+                  </td>
+                </tr>
+              ) : submissions.length === 0 ? (
                 <tr>
                   <td colSpan="4" style={{ padding: 22, textAlign: "center", color: "var(--muted)" }}>
                     No sheets uploaded yet.
@@ -1083,12 +1095,27 @@ function SeatingTab({ exam, fetchExam }) {
 function OverviewTab({ exam }) {
   const [submissions, setSubmissions] = useState([]);
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/submissions`)
       .then((res) => res.json())
-      .then((data) => setSubmissions(data.filter((s) => s.status === "Graded")));
+      .then((data) => {
+        setSubmissions(data.filter((s) => s.status === "Graded"));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [exam]);
+
+  if (loading) {
+    return (
+      <div style={{ ...panel, padding: 40, textAlign: "center" }}>
+        <div style={{ display: "inline-block", width: 30, height: 30, border: "3px solid rgba(62, 101, 204, 0.2)", borderTopColor: "var(--accent-strong)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+        <p style={{ marginTop: 12, color: "var(--muted)", fontWeight: 600 }}>Loading class overview analytics...</p>
+      </div>
+    );
+  }
 
   if (submissions.length === 0) {
     return (
