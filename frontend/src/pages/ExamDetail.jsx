@@ -203,6 +203,69 @@ function AnswerSheetsTab({ exam, fetchExam }) {
   const [classStudents, setClassStudents] = useState([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [paperToDelete, setPaperToDelete] = useState(null);
+  const [isReviewingFlags, setIsReviewingFlags] = useState(false);
+  const [isFlagModalOpen, setIsFlagModalOpen] = useState(false);
+  const [flagResults, setFlagResults] = useState([]);
+
+  const handleReviewFlags = async () => {
+    if (!exam.seatingArrangement || !exam.seatingArrangement.assignments || exam.seatingArrangement.assignments.length === 0) {
+      toast.error("No seating arrangement generated yet!");
+      return;
+    }
+
+    const assignments = exam.seatingArrangement.assignments;
+    const adjacentPairs = [];
+
+    for (let i = 0; i < assignments.length; i++) {
+      for (let j = i + 1; j < assignments.length; j++) {
+        const a = assignments[i];
+        const b = assignments[j];
+        if (Math.abs(a.row - b.row) <= 1 && Math.abs(a.col - b.col) <= 1) {
+           const studentAId = a.studentId?._id || a.studentId;
+           const studentBId = b.studentId?._id || b.studentId;
+           if (studentAId && studentBId) {
+              adjacentPairs.push([studentAId, studentBId]);
+           }
+        }
+      }
+    }
+
+    if (adjacentPairs.length === 0) {
+      toast.info("No adjacent pairs found in the seating arrangement.");
+      return;
+    }
+
+    setIsReviewingFlags(true);
+    setIsFlagModalOpen(true);
+    setFlagResults([]);
+
+    try {
+      const response = await apiFetch(`${import.meta.env.VITE_API_URL}/api/exams/${exam._id}/plagiarism`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ pairs: adjacentPairs })
+      });
+      const data = await response.json();
+      
+      const mappedResults = (data.results || []).map(r => {
+         const studentA = classStudents.find(s => s._id === r.studentA);
+         const studentB = classStudents.find(s => s._id === r.studentB);
+         return {
+            ...r,
+            nameA: studentA ? (studentA.displayName || studentA.email) : r.studentA,
+            nameB: studentB ? (studentB.displayName || studentB.email) : r.studentB,
+         };
+      });
+      
+      mappedResults.sort((a, b) => b.similarity - a.similarity);
+      setFlagResults(mappedResults);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to run plagiarism check.");
+    } finally {
+      setIsReviewingFlags(false);
+    }
+  };
 
   useEffect(() => {
     fetchSubmissions();
@@ -377,6 +440,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
         </div>
         <button
           type="button"
+          onClick={handleReviewFlags}
           style={{
             border: "1px solid rgba(62, 101, 204, 0.35)",
             background: "#fff",
@@ -385,6 +449,7 @@ function AnswerSheetsTab({ exam, fetchExam }) {
             padding: "8px 12px",
             fontWeight: 700,
             cursor: "pointer",
+            transition: "all 0.2s"
           }}
         >
           Review Flags
@@ -631,6 +696,84 @@ function AnswerSheetsTab({ exam, fetchExam }) {
                 >
                   Delete Paper
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isFlagModalOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(19, 26, 38, 0.48)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 100,
+              padding: 16,
+            }}
+            onClick={() => !isReviewingFlags && setIsFlagModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "min(600px, 100%)",
+                maxHeight: "80vh",
+                display: "flex",
+                flexDirection: "column",
+                borderRadius: 20,
+                background: "#fff",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                overflow: "hidden"
+              }}
+            >
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111827" }}>Plagiarism & Proximity Flags</h2>
+                <button 
+                  onClick={() => !isReviewingFlags && setIsFlagModalOpen(false)}
+                  disabled={isReviewingFlags}
+                  style={{ background: "none", border: "none", fontSize: 24, cursor: isReviewingFlags ? "not-allowed" : "pointer", color: "#6b7280", lineHeight: 1 }}
+                >
+                  &times;
+                </button>
+              </div>
+              <div style={{ padding: 24, overflowY: "auto" }}>
+                {isReviewingFlags ? (
+                  <div style={{ textAlign: "center", padding: "40px 0" }}>
+                    <div style={{ display: "inline-block", width: 40, height: 40, border: "4px solid rgba(62, 101, 204, 0.2)", borderTopColor: "var(--accent-strong)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+                    <p style={{ marginTop: 16, color: "var(--muted)", fontWeight: 600 }}>Analyzing text similarity of adjacent seating pairs using OCR...</p>
+                  </div>
+                ) : flagResults.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "var(--muted)", padding: "20px 0" }}>No significant similarity found.</div>
+                ) : (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", paddingBottom: 8, borderBottom: "1px solid var(--line)", marginBottom: 12 }}>
+                      <span style={{ width: "40%" }}>Student A</span>
+                      <span style={{ width: "40%" }}>Student B</span>
+                      <span style={{ width: "20%", textAlign: "right" }}>Similarity</span>
+                    </div>
+                    {flagResults.map((result, idx) => {
+                      const isHighRisk = result.similarity > 75;
+                      const isMediumRisk = result.similarity > 50 && result.similarity <= 75;
+                      const color = isHighRisk ? "#dc2626" : isMediumRisk ? "#d97706" : "#10b981";
+                      const bgColor = isHighRisk ? "#fef2f2" : isMediumRisk ? "#fffbeb" : "#f0fdf4";
+                      
+                      return (
+                        <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 10px", borderRadius: 8, background: bgColor, marginBottom: 8, border: `1px solid ${color}33` }}>
+                          <span style={{ width: "40%", fontWeight: 600, color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={result.nameA}>{result.nameA}</span>
+                          <span style={{ width: "40%", fontWeight: 600, color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={result.nameB}>{result.nameB}</span>
+                          <span style={{ width: "20%", textAlign: "right", fontWeight: 800, color }}>{result.similarity}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
