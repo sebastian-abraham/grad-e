@@ -4,7 +4,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
-  PlusCircle,
   LogOut,
   Menu,
   X,
@@ -15,20 +14,19 @@ export default function TeacherLayout() {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileMenuRef = useRef(null);
 
   const navItems = useMemo(
     () => [
-      { name: "Dashboard", path: "/teacher", icon: <LayoutDashboard size={18} /> },
-      //{ name: "New Exam", path: "/teacher/create-exam", icon: <PlusCircle size={18} /> },
+      { name: "Dashboard", path: "/teacher", icon: <LayoutDashboard size={20} /> },
     ],
     []
   );
 
   useEffect(() => {
-    setMenuOpen(false);
+    setMobileMenuOpen(false);
     setProfileOpen(false);
   }, [location.pathname]);
 
@@ -81,31 +79,27 @@ export default function TeacherLayout() {
   };
 
   return (
-    <div className="teacher-shell">
+    <div className="shell">
       <AnimatePresence>
-        {menuOpen && (
+        {mobileMenuOpen && (
           <motion.div
-            className="teacher-backdrop"
+            className="sidebar-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={() => setMenuOpen(false)}
+            onClick={() => setMobileMenuOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      <motion.aside
-        className={`teacher-sidebar ${menuOpen ? "open" : ""}`}
-        initial={{ x: -28, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
-      >
-        <div className="teacher-brand">
-          <h1 className="teacher-brand-name">Grade-E</h1>
+      <aside className={`sidebar ${mobileMenuOpen ? "mobile-open" : ""}`}>
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-icon">G</div>
+          <span className="sidebar-brand-text">Grade-E</span>
         </div>
 
-        <nav className="teacher-nav">
+        <nav className="sidebar-nav">
           {navItems.map((item) => {
             const isActive =
               location.pathname === item.path ||
@@ -115,60 +109,66 @@ export default function TeacherLayout() {
               <Link
                 key={item.name}
                 to={item.path}
-                className={`teacher-nav-link ${isActive ? "active" : ""}`}
-                onClick={() => setMenuOpen(false)}
+                className={`sidebar-link ${isActive ? "active" : ""}`}
+                onClick={() => setMobileMenuOpen(false)}
+                title={item.name}
               >
-                {item.icon}
-                <span>{item.name}</span>
+                <span className="sidebar-link-icon">{item.icon}</span>
+                <span className="sidebar-link-text">{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="teacher-side-foot" />
-      </motion.aside>
+        <div className="sidebar-footer">
+          <button onClick={handleLogout} className="sidebar-logout-btn" title="Logout">
+            <span className="sidebar-link-icon"><LogOut size={20} /></span>
+            <span className="sidebar-link-text">Logout</span>
+          </button>
+        </div>
+      </aside>
 
-      <main className="teacher-main">
+      <main className="main-area">
         <motion.header
-          className="teacher-topbar"
+          className="topbar"
           initial={{ y: -16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.34 }}
         >
-          <div className="teacher-topbar-left">
-            <button className="teacher-menu-btn" onClick={() => setMenuOpen((prev) => !prev)}>
-              {menuOpen ? <X size={18} /> : <Menu size={18} />}
+          <div className="topbar-left">
+            <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen((prev) => !prev)}>
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
+            <span className="topbar-breadcrumb">Teacher Panel</span>
           </div>
 
-          <div className="teacher-topbar-right" ref={profileMenuRef}>
-
-
+          <div className="topbar-right" ref={profileMenuRef}>
             <button
-              className={`teacher-profile-btn ${profileOpen ? "open" : ""}`}
+              className={`topbar-profile-btn ${profileOpen ? "open" : ""}`}
               onClick={() => setProfileOpen((prev) => !prev)}
               aria-haspopup="menu"
               aria-expanded={profileOpen}
             >
-              <span className="teacher-avatar">{getInitials()}</span>
-              <ChevronDown size={16} />
+              <span className="topbar-avatar">{getInitials()}</span>
+              <span className="topbar-profile-name">{currentUser?.displayName || "Teacher"}</span>
+              <ChevronDown size={14} />
             </button>
 
             <AnimatePresence>
               {profileOpen && (
                 <motion.div
-                  className="teacher-profile-menu"
+                  className="topbar-profile-menu"
                   initial={{ opacity: 0, y: -8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.98 }}
                   transition={{ duration: 0.18 }}
                   role="menu"
                 >
-                  <div className="teacher-profile-meta">
+                  <div className="topbar-profile-meta">
                     <p>{currentUser?.displayName || "Teacher"}</p>
                     <small>{currentUser?.email || "No email"}</small>
                   </div>
-                  <button onClick={handleLogout} className="teacher-profile-logout" role="menuitem">
+                  <button onClick={handleLogout} className="topbar-profile-logout" role="menuitem">
                     <LogOut size={16} />
                     Logout
                   </button>
